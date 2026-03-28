@@ -68,17 +68,8 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        String frontendUrl = System.getenv("FRONTEND_URL");
+        configuration.setAllowedOrigins(List.of("https://dium-frontend.vercel.app", "http://localhost:4200", "https://dium.kz", "https://www.dium.kz"));
 
-        if (frontendUrl != null) {
-            configuration.setAllowedOrigins(List.of(frontendUrl, "http://localhost:4200"));
-        } else {
-            configuration.setAllowedOrigins(List.of(
-                    "https://dium.kz",
-                    "https://dium.vercel.app",
-                    "http://localhost:4200"
-            ));
-        }
 
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
 
