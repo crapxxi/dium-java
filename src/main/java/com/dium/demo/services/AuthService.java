@@ -41,6 +41,7 @@ public class AuthService {
                     request.phone()
             );
         } catch (Exception e) {
+            System.err.println("DEBUG LOGIN ERROR: " + e.getClass().getName() + " - " + e.getMessage());
             throw new RuntimeException("Phone or password is incorrect!");
         }
     }
