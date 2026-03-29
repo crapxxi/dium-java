@@ -43,7 +43,11 @@ public class OrderController {
     public ResponseEntity<?> getKitchenOrders(@AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(orderService.getKitchenOrders(userDetails));
     }
-
+    @GetMapping("/order-history")
+    @Operation(summary = "get venue order history")
+    public ResponseEntity<?> getOrderHistory(@AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(orderService.getOrderHistory(userDetails));
+    }
     @GetMapping("/{orderId}/kaspi-url")
     @Operation(summary = "get kaspi url of venue")
     public ResponseEntity<?> getKaspiUrl(@PathVariable Long orderId) {

@@ -129,8 +129,7 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public List<OrderResponse> getKitchenOrders(UserDetails userDetails) {
-        if(!(userDetails instanceof User user) || user.getRole() != UserRole.VENUE_OWNER)
-            throw new RuntimeException("Only a venue owner can get kitchen order");
+        User user = checkAuth(userDetails);
 
         Long venueId = venueRepository.findByOwnerId(user.getId())
                 .orElseThrow(()-> new RuntimeException("user don't have a venue")).getId();
@@ -147,6 +146,24 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
+    public List<OrderResponse> getOrderHistory(UserDetails userDetails) {
+        User user = checkAuth(userDetails);
+        Long venueId = venueRepository.findByOwnerId(user.getId())
+                .orElseThrow(() -> new RuntimeException("user don't have a venue")).getId();
+
+        List<OrderStatus> hiddenStatuses = List.of(
+                OrderStatus.PENDING,
+                OrderStatus.READY,
+                OrderStatus.PREPARING
+        );
+
+        return orderMapper.toResponseList(orderRepository.findAllByVenueIdAndStatusNotInOrderByCreatedAtDesc(
+                venueId,
+                hiddenStatuses
+        ));
+    }
+
+    @Transactional(readOnly = true)
     public String getKaspiUrl(Long orderId) {
         Order order = orderRepository.findById(orderId).orElseThrow(() -> new RuntimeException("order not found"));
 
@@ -157,6 +174,12 @@ public class OrderService {
         }
 
         return venue.getKaspiUrl();
+    }
+
+    public User checkAuth(UserDetails userDetails) {
+        if(!(userDetails instanceof User user) || user.getRole() != UserRole.VENUE_OWNER)
+            throw new RuntimeException("have not permission, not a venue owner");
+        return user;
     }
 
 }

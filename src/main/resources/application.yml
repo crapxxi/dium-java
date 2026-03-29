@@ -12,9 +12,9 @@ jwt:
   secret: ${JWT_KEY:default_secret_for_dev_only_12345}
 
 cloudinary:
-  cloud_name: ${CLOUDINARY_CLOUD_NAME}
-  api_key: ${CLOUDINARY_API_KEY}
-  api_secret: ${CLOUDINARY_API_SECRET}
+  cloud_name: ${CLOUDINARY_CLOUD_NAME:temp}
+  api_key: ${CLOUDINARY_API_KEY:12345}
+  api_secret: ${CLOUDINARY_API_SECRET:secret}
 
 server:
   port: ${PORT:8080}
