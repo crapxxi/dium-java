@@ -16,10 +16,12 @@ public interface VenueMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "owner", ignore = true)
     @Mapping(target = "products", ignore = true)
+    @Mapping(target = "imageUrl", ignore = true)
     Venue toEntity(VenueDTO venueDto);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "owner", ignore = true)
     @Mapping(target = "products", ignore = true)
+    @Mapping(target = "imageUrl", ignore = true)
     void updateVenueFromDto(VenueDTO dto, @MappingTarget Venue entity);
 }

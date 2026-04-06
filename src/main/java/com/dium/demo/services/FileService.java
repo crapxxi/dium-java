@@ -53,6 +53,14 @@ public class FileService {
     }
 
     public String extractPublicId(String fileUrl) {
-        return fileUrl.substring(fileUrl.lastIndexOf("/")  + 1, fileUrl.lastIndexOf("."));
+        try {
+            String[] parts = fileUrl.split("/");
+            String fileNameWithExtension = parts[parts.length - 1];
+            String fileName = fileNameWithExtension.substring(0, fileNameWithExtension.lastIndexOf("."));
+
+            return "dium_uploads/" + fileName;
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

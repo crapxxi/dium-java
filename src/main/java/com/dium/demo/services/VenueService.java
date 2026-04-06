@@ -47,17 +47,23 @@ public class VenueService {
         if(!(userDetails instanceof User user) || user.getRole() != UserRole.VENUE_OWNER)
             throw new RuntimeException("Only a venue owner can update venue");
 
+
         Venue venue = venueRepository.findByOwnerId(user.getId())
                 .orElseThrow(() -> new RuntimeException("Venue not found"));
+
 
         if (!Objects.equals(venue.getOwner().getId(), user.getId()))
             throw new RuntimeException("You are not the owner of this venue");
 
+        System.out.println("Старый URL в БД: " + venue.getImageUrl());
+
         venueMapper.updateVenueFromDto(venueDTO, venue);
         if (image != null && !image.isEmpty()) {
+            System.out.println("Файл получен: " + image.getOriginalFilename());
             fileService.deleteFile(venue.getImageUrl());
             String newPath = fileService.saveFile(image);
             venue.setImageUrl(newPath);
+            System.out.println("Новый URL установлен: " + newPath);
         }
 
         return venueMapper.toDto(venueRepository.save(venue));

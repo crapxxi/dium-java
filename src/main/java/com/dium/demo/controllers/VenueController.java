@@ -63,7 +63,7 @@ public class VenueController {
     )
     public ResponseEntity<VenueDTO> updateVenue(
             @AuthenticationPrincipal UserDetails userDetails,
-            @RequestPart("venue") VenueDTO venueDTO,
+            @RequestPart("venueDTO") VenueDTO venueDTO,
             @RequestPart(value = "image", required = false) MultipartFile image
     ) throws IOException {
         return ResponseEntity.ok(venueService.updateVenue(userDetails, venueDTO, image));
