@@ -10,5 +10,6 @@ public record VenueDTO(
         String imageUrl,
         Boolean canDeliver,
         String kaspiUrl,
-        BigDecimal deliveryPrice
+        BigDecimal deliveryPrice,
+        Boolean isWorking
 ) { }

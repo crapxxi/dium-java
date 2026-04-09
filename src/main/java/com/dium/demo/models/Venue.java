@@ -25,6 +25,7 @@ public class Venue {
     private Boolean canDeliver;
     private BigDecimal deliveryPrice;
     private String kaspiUrl;
+    private Boolean isWorking = true;
 
     @OneToMany(mappedBy = "venue", cascade = CascadeType.ALL)
     private List<Product> products;

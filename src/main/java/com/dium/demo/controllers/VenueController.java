@@ -75,4 +75,11 @@ public class VenueController {
         return ResponseEntity.ok(venueService.getOwnerVenue(userDetails));
     }
 
+    @PatchMapping("/manage/toggleWork")
+    @Operation(summary = "Make venue working or turn off")
+    public ResponseEntity<?> toggleWork(@AuthenticationPrincipal UserDetails userDetails) {
+        venueService.toggleWork(userDetails);
+        return ResponseEntity.ok().build();
+    }
+
 }

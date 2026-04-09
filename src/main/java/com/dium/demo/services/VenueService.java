@@ -25,7 +25,7 @@ public class VenueService {
 
     @Transactional(readOnly = true)
     public List<VenueDTO> getAllVenues() {
-        return venueMapper.toDtoList(venueRepository.findAll());
+        return venueMapper.toDtoList(venueRepository.findAllByIsWorkingTrue());
     }
     @Transactional(readOnly = true)
     public VenueDTO getVenueById(Long venueId) {
@@ -82,5 +82,16 @@ public class VenueService {
         }
 
         return venueMapper.toDto(venueRepository.save(venue));
+    }
+
+    @Transactional
+    public void toggleWork(UserDetails userDetails) {
+        if(!(userDetails instanceof User user) || !user.getRole().equals(UserRole.VENUE_OWNER))
+            throw new RuntimeException("Only a venue owner can create a venue");
+
+        Venue venue = venueRepository.findByOwnerId(user.getId()).orElseThrow(() -> new RuntimeException("user doesn't have a venue"));
+
+        boolean currentStatus = (venue.getIsWorking() != null) && venue.getIsWorking();
+        venue.setIsWorking(!currentStatus);
     }
 }
