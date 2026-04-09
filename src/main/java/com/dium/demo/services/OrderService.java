@@ -95,6 +95,21 @@ public class OrderService {
         order.setTotalSum(totalSum);
         order.setComment(request.comment());
 
+        if ((user.getPaymentFrom() == null || user.getPaymentFrom().isEmpty()) &&
+                (request.paymentFrom() == null || request.paymentFrom().isEmpty())) {
+            throw new RuntimeException("Payment method is required!");
+        }
+
+        String finalPaymentMethod = (request.paymentFrom() != null && !request.paymentFrom().isEmpty())
+                ? request.paymentFrom()
+                : user.getPaymentFrom();
+
+        order.setPaymentFrom(finalPaymentMethod);
+
+        if (user.getPaymentFrom() == null || user.getPaymentFrom().isEmpty()) {
+            user.setPaymentFrom(finalPaymentMethod);
+        }
+
         Order savedOrder = orderRepository.save(order);
 
         savedOrder.setPickupCode(generatePickupCode(savedOrder.getId()));

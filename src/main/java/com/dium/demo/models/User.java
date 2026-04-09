@@ -34,6 +34,8 @@ public class User implements UserDetails {
     @Enumerated(EnumType.STRING)
     private UserRole role;
 
+    private String paymentFrom;
+
     @Override
     @NonNull
     public Collection<? extends GrantedAuthority> getAuthorities() {

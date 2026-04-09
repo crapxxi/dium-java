@@ -9,5 +9,6 @@ public record CreateOrderRequest(
         List<OrderItemRequest> items,
         String address,
         String comment,
-        BigDecimal deliveryFee
+        BigDecimal deliveryFee,
+        String paymentFrom
 ) { }

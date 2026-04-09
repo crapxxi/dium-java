@@ -31,10 +31,12 @@ public class Order {
     private String comment;
     private BigDecimal deliveryFee;
 
+
     @Column(nullable = false)
     private BigDecimal totalSum;
     private LocalDateTime createdAt;
     private Integer pickupCode;
+    private String paymentFrom;
 
     @PrePersist
     protected void onCreate() {
