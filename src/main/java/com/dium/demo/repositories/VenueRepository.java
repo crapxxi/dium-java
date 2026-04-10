@@ -7,6 +7,6 @@ import java.util.List;
 import java.util.Optional;
 
 public interface VenueRepository extends JpaRepository<Venue, Long> {
-    List<Venue> findAllByIsWorkingTrue();
+    List<Venue> findAll();
     Optional<Venue> findByOwnerId(Long ownerId);
 }

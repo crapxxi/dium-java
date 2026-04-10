@@ -26,7 +26,7 @@ public class VenueService {
 
     @Transactional(readOnly = true)
     public List<VenueDTO> getAllVenues() {
-        return venueMapper.toDtoList(venueRepository.findAllByIsWorkingTrue());
+        return venueMapper.toDtoList(venueRepository.findAll());
     }
     @Transactional(readOnly = true)
     public VenueDTO getVenueById(Long venueId) {
