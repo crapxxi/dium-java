@@ -21,6 +21,7 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
+@EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
@@ -51,6 +52,7 @@ public class SecurityConfig {
 
 
                                 .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                                .requestMatchers("/api/v1/auth/venue-register").hasRole("ADMIN")
 
 
                                 .anyRequest().authenticated()

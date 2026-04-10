@@ -9,6 +9,7 @@ import com.dium.demo.mappers.UserMapper;
 import com.dium.demo.models.User;
 import com.dium.demo.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -61,7 +62,9 @@ public class AuthService {
     }
 
     @Transactional
-    public UserResponse venueRegister(RegisterRequest request) {
+    @PreAuthorize("hasRole('ADMIN')")
+    public UserResponse venueRegister( RegisterRequest request) {
+
         if(userRepository.existsByPhone(request.phone()))
             throw new RuntimeException("Phone is already in the system");
 
