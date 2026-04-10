@@ -38,7 +38,7 @@ public class ModifierController {
     @Operation(summary = "delete modifierGroup")
     public ResponseEntity<?> deleteModifierGroup(@AuthenticationPrincipal UserDetails userDetails,
                                                  @PathVariable Long groupId) {
-        modifierService.deleteGroup(userDetails, groupId);
+        modifierService.deleteModifierGroup(userDetails, groupId);
         return ResponseEntity.ok().build();
     }
     @PatchMapping("/groups/{groupId}/toggleRequired")

@@ -39,38 +39,53 @@ public class OrderService {
         Venue venue = venueRepository.findById(request.venueId())
                 .orElseThrow(() -> new RuntimeException("Venue not found"));
 
+        if(!venue.getIsWorking())
+            throw new RuntimeException("Venue is not working");
+
         Order order = new Order();
         order.setUser(user);
         order.setVenue(venue);
         order.setStatus(OrderStatus.PENDING);
+        order.setComment(request.comment());
 
         BigDecimal totalSum = BigDecimal.ZERO;
         List<OrderItem> orderItems = new ArrayList<>();
 
         boolean isDelivery = venue.getCanDeliver() && request.address() != null && !request.address().isBlank();
-        order.setAddress(venue.getCanDeliver() ? request.address() : null);
+        order.setAddress(isDelivery ? request.address() : null);
 
-        for(OrderItemRequest itemRequest : request.items()) {
-            if (itemRequest.count() <= 0) {
-                throw new RuntimeException("Invalid count: count must be greater than 0");
+        for (OrderItemRequest itemRequest : request.items()) {
+            if (itemRequest.count() == null || itemRequest.count() <= 0) {
+                throw new RuntimeException("Count must be greater than 0");
             }
+
             Product product = productRepository.findById(itemRequest.productId())
                     .orElseThrow(() -> new RuntimeException("Product not found: " + itemRequest.productId()));
 
-            if(!product.getInStock())
-                throw new RuntimeException("Product is not in stock");
+            if (!product.getInStock()) {
+                throw new RuntimeException("Product " + product.getName() + " is not in stock");
+            }
 
             if (!product.getVenue().getId().equals(venue.getId())) {
-                throw new RuntimeException("Product " + product.getName() + " is not from this venue");
+                throw new RuntimeException("Product is not from this venue");
             }
 
             BigDecimal itemPrice = product.getPrice();
 
-            List<Modifier> selectedModifiers = modifierRepository.findAllById(itemRequest.modifierIds());
-            for(Modifier modifier : selectedModifiers) {
-                if(!modifier.getModifierGroup().getProduct().getId().equals(product.getId()))
-                    throw new RuntimeException("invalid modifier");
-                itemPrice = itemPrice.add(modifier.getPriceDelta());
+            List<Modifier> selectedModifiers = new ArrayList<>();
+
+            if (itemRequest.modifierIds() != null && !itemRequest.modifierIds().isEmpty()) {
+                selectedModifiers = modifierRepository.findAllById(itemRequest.modifierIds());
+                for (Modifier modifier : selectedModifiers) {
+                    if (!modifier.getModifierGroup().getProduct().getId().equals(product.getId())) {
+                        throw new RuntimeException("Invalid modifier for product: " + product.getName());
+                    }
+                    itemPrice = itemPrice.add(modifier.getPriceDelta());
+                }
+            }
+
+            if (itemPrice.compareTo(BigDecimal.ZERO) < 0) {
+                itemPrice = BigDecimal.ZERO;
             }
 
             OrderItem orderItem = new OrderItem();
@@ -84,26 +99,29 @@ public class OrderService {
             totalSum = totalSum.add(itemTotal);
             orderItems.add(orderItem);
         }
-        if(isDelivery && venue.getDeliveryPrice() != null) {
-            order.setDeliveryFee(venue.getDeliveryPrice());
-            totalSum = totalSum.add(venue.getDeliveryPrice());
+
+        if (isDelivery && venue.getDeliveryPrice() != null) {
+            BigDecimal deliveryFee = venue.getDeliveryPrice();
+            order.setDeliveryFee(deliveryFee);
+            totalSum = totalSum.add(deliveryFee);
         } else {
             order.setDeliveryFee(BigDecimal.ZERO);
         }
 
+        if (totalSum.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("Order total sum must be greater than zero");
+        }
+
         order.setItems(orderItems);
         order.setTotalSum(totalSum);
-        order.setComment(request.comment());
-
-        if ((user.getPaymentFrom() == null || user.getPaymentFrom().isEmpty()) &&
-                (request.paymentFrom() == null || request.paymentFrom().isEmpty())) {
-            throw new RuntimeException("Payment method is required!");
-        }
 
         String finalPaymentMethod = (request.paymentFrom() != null && !request.paymentFrom().isEmpty())
                 ? request.paymentFrom()
                 : user.getPaymentFrom();
 
+        if (finalPaymentMethod == null || finalPaymentMethod.isEmpty()) {
+            throw new RuntimeException("Payment method is required!");
+        }
         order.setPaymentFrom(finalPaymentMethod);
 
         if (user.getPaymentFrom() == null || user.getPaymentFrom().isEmpty()) {
@@ -111,12 +129,10 @@ public class OrderService {
         }
 
         Order savedOrder = orderRepository.save(order);
-
         savedOrder.setPickupCode(generatePickupCode(savedOrder.getId()));
 
         return orderMapper.toResponse(orderRepository.save(savedOrder));
     }
-
     @Transactional
     public OrderResponse updateStatus(UserDetails userDetails, Long orderId, OrderStatus newStatus) {
         if(!(userDetails instanceof  User user) || user.getRole() != UserRole.VENUE_OWNER)
@@ -127,6 +143,10 @@ public class OrderService {
 //        if(newStatus == OrderStatus.READY) {
 //            // Уведомление
 //        }
+
+        if(!order.getVenue().getOwner().getId().equals(user.getId()))
+            throw new RuntimeException("You haven't permission");
+
         order.setStatus(newStatus);
         return orderMapper.toResponse(orderRepository.save(order));
     }

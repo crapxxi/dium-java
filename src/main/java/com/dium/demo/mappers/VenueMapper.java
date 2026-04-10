@@ -17,6 +17,7 @@ public interface VenueMapper {
     @Mapping(target = "owner", ignore = true)
     @Mapping(target = "products", ignore = true)
     @Mapping(target = "imageUrl", ignore = true)
+    @Mapping(target = "deliveryPrice", ignore = true)
     Venue toEntity(VenueDTO venueDto);
 
     @Mapping(target = "id", ignore = true)

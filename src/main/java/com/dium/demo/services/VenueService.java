@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Objects;
 
@@ -56,8 +57,11 @@ public class VenueService {
             throw new RuntimeException("You are not the owner of this venue");
 
         System.out.println("Старый URL в БД: " + venue.getImageUrl());
-
+        if (venueDTO.deliveryPrice() != null && venueDTO.deliveryPrice().compareTo(BigDecimal.ZERO) < 0) {
+            throw new RuntimeException("Delivery price cannot be negative");
+        }
         venueMapper.updateVenueFromDto(venueDTO, venue);
+
         if (image != null && !image.isEmpty()) {
             System.out.println("Файл получен: " + image.getOriginalFilename());
             fileService.deleteFile(venue.getImageUrl());
@@ -66,6 +70,8 @@ public class VenueService {
             System.out.println("Новый URL установлен: " + newPath);
         }
 
+        venue.setDeliveryPrice(venueDTO.deliveryPrice());
+
         return venueMapper.toDto(venueRepository.save(venue));
     }
 
@@ -73,6 +79,13 @@ public class VenueService {
     public VenueDTO createVenue(UserDetails userDetails, VenueDTO venueDTO, MultipartFile image) throws IOException {
         if (!(userDetails instanceof User user) || user.getRole() != UserRole.VENUE_OWNER)
             throw new RuntimeException("Only a venue owner can create a venue");
+
+        if (venueRepository.findByOwnerId(user.getId()).isPresent()) {
+            throw new RuntimeException("User already has a venue");
+        }
+        if (venueDTO.deliveryPrice() == null || venueDTO.deliveryPrice().compareTo(BigDecimal.ZERO) < 0) {
+            throw new RuntimeException("Invalid delivery price");
+        }
 
         Venue venue = venueMapper.toEntity(venueDTO);
         venue.setOwner(user);

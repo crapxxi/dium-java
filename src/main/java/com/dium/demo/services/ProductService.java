@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Objects;
 
@@ -38,6 +39,10 @@ public class ProductService {
             throw new RuntimeException("Only venue owners can add products");
         }
 
+        if (productDto.price() == null || productDto.price().compareTo(BigDecimal.ZERO) < 0) {
+            throw new RuntimeException("Price cannot be negative");
+        }
+
         Venue venue = venueRepository.findByOwnerId(user.getId())
                 .orElseThrow(() -> new RuntimeException("Venue not found"));
 
@@ -59,24 +64,29 @@ public class ProductService {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
-        User currentUser = (User) userDetails;
-        if (!Objects.equals(product.getVenue().getOwner().getId(), currentUser.getId())) {
-            throw new RuntimeException("You are not the owner of the venue this product belongs to!");
+        User user = (User) userDetails;
+        if (user.getRole() != UserRole.VENUE_OWNER ||
+                !Objects.equals(product.getVenue().getOwner().getId(), user.getId())) {
+            throw new RuntimeException("Access denied");
+        }
+
+        if (dto.price() != null && dto.price().compareTo(BigDecimal.ZERO) < 0) {
+            throw new RuntimeException("Price cannot be negative");
         }
 
         if (image != null && !image.isEmpty()) {
-            if (product.getImageUrl() != null) {
+            if (product.getImageUrl() != null && !product.getImageUrl().isBlank()) {
                 fileService.deleteFile(product.getImageUrl());
             }
-
             String newImagePath = fileService.saveFile(image);
             product.setImageUrl(newImagePath);
         }
 
+        Venue currentVenue = product.getVenue();
         productMapper.updateProductFromDto(dto, product);
+        product.setVenue(currentVenue);
 
-        Product updatedProduct = productRepository.save(product);
-        return productMapper.toDto(updatedProduct);
+        return productMapper.toDto(productRepository.save(product));
     }
 
     @Transactional
