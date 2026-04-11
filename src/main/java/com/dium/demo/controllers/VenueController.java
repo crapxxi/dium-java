@@ -53,6 +53,7 @@ public class VenueController {
         return ResponseEntity.ok(venueService.getOwnerVenue());
     }
 
+    @PreAuthorize("hasRole('VENUE_OWNER')")
     @PatchMapping("/manage/toggleWork")
     public ResponseEntity<Void> toggleWork() {
         venueService.toggleWork();

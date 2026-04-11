@@ -78,7 +78,12 @@ public class VenueService {
         if (venueRepository.existsByOwner_Id(user.getId()))
             throw new RuntimeException("User already has a venue");
 
-        checkDeliveryPriceForNegative(request.deliveryPrice());
+        BigDecimal finalPrice = BigDecimal.ZERO;
+
+        if(request.deliveryPrice() != null) {
+            checkDeliveryPriceForNegative(request.deliveryPrice());
+            finalPrice = request.deliveryPrice();
+        }
 
         Venue venue = venueMapper.toEntity(request);
         venue.setOwner(user);
@@ -86,6 +91,8 @@ public class VenueService {
             String path = fileService.saveFile(image);
             venue.setImageUrl(path);
         }
+
+        venue.setDeliveryPrice(finalPrice);
 
         return venueMapper.toResponse(venueRepository.save(venue));
     }

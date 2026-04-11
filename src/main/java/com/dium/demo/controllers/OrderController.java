@@ -23,6 +23,7 @@ public class OrderController {
         return ResponseEntity.ok(orderService.createOrder(request));
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/user")
     public ResponseEntity<List<OrderResponse>> getUserOrders() {
         return ResponseEntity.ok(orderService.getOrdersByUserId());
@@ -53,6 +54,7 @@ public class OrderController {
     public ResponseEntity<List<OrderResponse>> getOrderHistory() {
         return ResponseEntity.ok(orderService.getOrderHistory());
     }
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/{orderId}/kaspi-url")
     public ResponseEntity<String> getKaspiUrl(@PathVariable Long orderId) {
         return ResponseEntity.ok(orderService.getKaspiUrl(orderId));

@@ -15,6 +15,5 @@ public record VenueRequest(
         String imageUrl,
         @NotNull(message = "Delivery capability must be specified")
         Boolean canDeliver,
-        @Min(value = 0, message = "Delivery price cannot be negative")
         BigDecimal deliveryPrice
 ) { }

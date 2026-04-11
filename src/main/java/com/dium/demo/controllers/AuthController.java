@@ -36,7 +36,7 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(request));
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN', 'VENUE_OWNER', 'CLIENT')")
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/me")
     public ResponseEntity<UserResponse> getMe(@Valid @AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(authService.getMe());
