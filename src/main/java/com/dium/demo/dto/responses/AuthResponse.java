@@ -1,4 +1,4 @@
-package com.dium.demo.dto.auth;
+package com.dium.demo.dto.responses;
 
 import com.dium.demo.enums.UserRole;
 

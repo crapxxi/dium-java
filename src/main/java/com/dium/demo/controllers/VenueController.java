@@ -1,84 +1,61 @@
 package com.dium.demo.controllers;
 
-import com.dium.demo.dto.venue_product.VenueDTO;
+import com.dium.demo.dto.requests.VenueRequest;
+import com.dium.demo.dto.responses.VenueResponse;
 import com.dium.demo.services.VenueService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Encoding;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/venues")
-@Tag(name = "venues")
 public class VenueController {
     private final VenueService venueService;
 
     @GetMapping
-    @Operation(summary = "getAll")
-    public ResponseEntity<?> getAll() {
+    public ResponseEntity<List<VenueResponse>> getAll() {
         return ResponseEntity.ok(venueService.getAllVenues());
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "get by id")
-    public ResponseEntity<?> getById(@PathVariable Long id) {
+    public ResponseEntity<VenueResponse> getById(@PathVariable Long id) {
         return ResponseEntity.ok(venueService.getVenueById(id));
     }
 
+    @PreAuthorize("hasRole('VENUE_OWNER')")
     @PostMapping(value = "/manage", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(
-            summary = "create Venue",
-            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    content = @Content(
-                            encoding = @Encoding(name = "venue", contentType = "application/json")
-                    )
-            )
-    )
-    public ResponseEntity<VenueDTO> createVenue(
-            @AuthenticationPrincipal UserDetails userDetails,
-            @RequestPart("venue") VenueDTO venueDTO,
+    public ResponseEntity<VenueResponse> createVenue(
+            @Valid @RequestPart("venueRequest") VenueRequest request,
             @RequestPart(value = "image", required = false) MultipartFile image
     ) throws IOException {
-        return ResponseEntity.ok(venueService.createVenue(userDetails, venueDTO, image));
+        return ResponseEntity.ok(venueService.createVenue(request, image));
     }
 
+    @PreAuthorize("hasRole('VENUE_OWNER')")
     @PutMapping(value = "/manage", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(
-            summary = "update Venue",
-            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    content = @Content(
-                            encoding = @Encoding(name = "venue", contentType = "application/json")
-                    )
-            )
-    )
-    public ResponseEntity<VenueDTO> updateVenue(
-            @AuthenticationPrincipal UserDetails userDetails,
-            @RequestPart("venueDTO") VenueDTO venueDTO,
+    public ResponseEntity<VenueResponse> updateVenue(
+            @Valid @RequestPart("venueRequest") VenueRequest request,
             @RequestPart(value = "image", required = false) MultipartFile image
     ) throws IOException {
-        return ResponseEntity.ok(venueService.updateVenue(userDetails, venueDTO, image));
+        return ResponseEntity.ok(venueService.updateVenue(request, image));
     }
 
     @GetMapping("/manage/my")
-    @Operation(summary = "get user's venue")
-    public ResponseEntity<?> getUserVenue(@AuthenticationPrincipal UserDetails userDetails) {
-        return ResponseEntity.ok(venueService.getOwnerVenue(userDetails));
+    public ResponseEntity<VenueResponse> getUserVenue() {
+        return ResponseEntity.ok(venueService.getOwnerVenue());
     }
 
     @PatchMapping("/manage/toggleWork")
-    @Operation(summary = "Make venue working or turn off")
-    public ResponseEntity<?> toggleWork(@AuthenticationPrincipal UserDetails userDetails) {
-        venueService.toggleWork(userDetails);
+    public ResponseEntity<Void> toggleWork() {
+        venueService.toggleWork();
         return ResponseEntity.ok().build();
     }
 

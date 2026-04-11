@@ -1,8 +1,12 @@
 package com.dium.demo.services;
 
-import com.dium.demo.dto.product_modifier.ModifierDTO;
-import com.dium.demo.dto.product_modifier.ModifierGroupDTO;
+import com.dium.demo.dto.requests.ModifierGroupRequest;
+import com.dium.demo.dto.requests.ModifierRequest;
+import com.dium.demo.dto.responses.ModifierGroupResponse;
+import com.dium.demo.dto.responses.ModifierResponse;
 import com.dium.demo.enums.UserRole;
+import com.dium.demo.exceptions.AccessDeniedException;
+import com.dium.demo.exceptions.BusinessLogicException;
 import com.dium.demo.mappers.ModifierGroupMapper;
 import com.dium.demo.mappers.ModifierMapper;
 import com.dium.demo.models.Modifier;
@@ -12,8 +16,8 @@ import com.dium.demo.models.User;
 import com.dium.demo.repositories.ModifierGroupRepository;
 import com.dium.demo.repositories.ModifierRepository;
 import com.dium.demo.repositories.ProductRepository;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,21 +32,21 @@ public class ModifierService {
     private final ModifierGroupRepository modifierGroupRepository;
     private final ModifierGroupMapper modifierGroupMapper;
     private final ModifierMapper modifierMapper;
+    private final CustomUserDetailsService userDetailsService;
 
-    private static final BigDecimal MAX_DISCOUNT = BigDecimal.ZERO;
 
     @Transactional
-    public ModifierGroupDTO addModifierGroup(UserDetails userDetails, Long productId, ModifierGroupDTO modifierGroupDTO) {
-        User user = checkVenueOwner(userDetails);
+    public ModifierGroupResponse addModifierGroup(Long productId, ModifierGroupRequest request) {
+        User user = userDetailsService.getCurrentUser();
+        checkVenueOwner(user);
 
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
-        if(!user.getId().equals(product.getVenue().getOwner().getId())) {
-            throw new RuntimeException("You cannot add modifier group to this product");
-        }
+        if(!user.getId().equals(product.getVenue().getOwner().getId()))
+            throw new AccessDeniedException("You cannot add modifier group to this product");
 
-        ModifierGroup modifierGroup = modifierGroupMapper.toEntity(modifierGroupDTO);
+        ModifierGroup modifierGroup = modifierGroupMapper.toEntity(request);
         modifierGroup.setProduct(product);
         modifierGroup.setIsDeleted(false);
 
@@ -54,37 +58,41 @@ public class ModifierService {
             });
         }
 
-        return modifierGroupMapper.toDto(modifierGroupRepository.save(modifierGroup));
+        return modifierGroupMapper.toResponse( modifierGroupRepository.save(modifierGroup) );
     }
 
     @Transactional
-    public ModifierDTO editModifier(UserDetails userDetails, Long modifierId, ModifierDTO modifierDTO) {
-        User user = checkVenueOwner(userDetails);
+    public ModifierResponse editModifier(Long modifierId, ModifierRequest request) {
+        User user = userDetailsService.getCurrentUser();
+
+        checkVenueOwner(user);
 
         Modifier modifier = modifierRepository.findById(modifierId)
-                .orElseThrow(() -> new RuntimeException("Modifier not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Modifier not found"));
 
         checkAccess(user, modifier);
 
-        validatePriceDelta(modifierDTO.priceDelta());
+        validatePriceDelta(request.priceDelta());
 
-        modifierMapper.updateFromDto(modifierDTO, modifier);
+        modifierMapper.updateFromRequest(request, modifier);
 
-        return modifierMapper.toDto(modifierRepository.save(modifier));
+        return modifierMapper.toResponse(modifierRepository.save(modifier));
     }
 
     @Transactional
-    public ModifierGroupDTO editModifierGroup(UserDetails userDetails, Long modifierGroupId, ModifierGroupDTO modifierGroupDTO) {
-        User user = checkVenueOwner(userDetails);
+    public ModifierGroupResponse editModifierGroup(Long modifierGroupId, ModifierGroupRequest request) {
+        User user = userDetailsService.getCurrentUser();
+
+        checkVenueOwner(user);
 
         ModifierGroup modifierGroup = modifierGroupRepository.findById(modifierGroupId)
-                .orElseThrow(() -> new RuntimeException("Modifier group not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Modifier group not found"));
 
         checkAccess(user, modifierGroup);
 
         Product originalProduct = modifierGroup.getProduct();
 
-        modifierGroupMapper.updateFromDto(modifierGroupDTO, modifierGroup);
+        modifierGroupMapper.updateFromRequest(request, modifierGroup);
 
         modifierGroup.setProduct(originalProduct);
         modifierGroup.setIsDeleted(false);
@@ -98,25 +106,28 @@ public class ModifierService {
             });
         }
 
-        return modifierGroupMapper.toDto(modifierGroupRepository.save(modifierGroup));
+        return modifierGroupMapper.toResponse(modifierGroupRepository.save(modifierGroup));
     }
 
     @Transactional
-    public void delete(UserDetails userDetails, Long modifierId) {
-        User user = checkVenueOwner(userDetails);
+    public void delete(Long modifierId) {
+        User user = userDetailsService.getCurrentUser();
+        checkVenueOwner(user);
+
         Modifier modifier = modifierRepository.findById(modifierId)
-                .orElseThrow(() -> new RuntimeException("Modifier not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Modifier not found"));
 
         checkAccess(user, modifier);
 
         modifierRepository.delete(modifier);
     }
     @Transactional
-    public void deleteModifierGroup(UserDetails userDetails, Long modifierGroupId) {
-        User user = checkVenueOwner(userDetails);
+    public void deleteModifierGroup(Long modifierGroupId) {
+        User user = userDetailsService.getCurrentUser();
+        checkVenueOwner(user);
 
         ModifierGroup modifierGroup = modifierGroupRepository.findById(modifierGroupId)
-                .orElseThrow(() -> new RuntimeException("Modifier group not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Modifier group not found"));
 
         checkAccess(user, modifierGroup);
 
@@ -126,11 +137,13 @@ public class ModifierService {
     }
 
     @Transactional
-    public void toggleRequired(UserDetails userDetails, Long modifierGroupId) {
-        User user = checkVenueOwner(userDetails);
+    public void toggleRequired(Long modifierGroupId) {
+        User user = userDetailsService.getCurrentUser();
+
+        checkVenueOwner(user);
 
         ModifierGroup modifierGroup = modifierGroupRepository.findById(modifierGroupId)
-                .orElseThrow(() -> new RuntimeException("Modifier group not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Modifier group not found"));
 
         checkAccess(user, modifierGroup);
 
@@ -141,10 +154,11 @@ public class ModifierService {
     }
 
     @Transactional
-    public void toggleStock(UserDetails userDetails, Long modifierId) {
-        User user = checkVenueOwner(userDetails);
+    public void toggleStock(Long modifierId) {
+        User user = userDetailsService.getCurrentUser();
+        checkVenueOwner(user);
         Modifier modifier = modifierRepository.findById(modifierId)
-                .orElseThrow(() -> new RuntimeException("Modifier not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Modifier not found"));
 
         checkAccess(user, modifier);
 
@@ -155,34 +169,33 @@ public class ModifierService {
     }
 
     @Transactional(readOnly = true)
-    public List<ModifierGroupDTO> getModifierGroups(Long productId) {
+    public List<ModifierGroupResponse> getModifierGroups(Long productId) {
         List<ModifierGroup> modifierGroups = modifierGroupRepository.findAllByProductIdAndIsDeletedFalse(productId);
 
-        return modifierGroupMapper.toDtoList(modifierGroups);
+        return modifierGroupMapper.toResponseList(modifierGroups);
     }
 
 
 
     private void validatePriceDelta(BigDecimal priceDelta) {
         if (priceDelta == null) return;
-        if (priceDelta.compareTo(MAX_DISCOUNT) < 0) {
-            throw new RuntimeException("Price delta is out of allowed range (too big discount)");
+        if (priceDelta.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BusinessLogicException("Price delta is out of allowed range (too big discount)");
         }
     }
 
-    public User checkVenueOwner(UserDetails userDetails) {
-        if(!(userDetails instanceof User user) || user.getRole() != UserRole.VENUE_OWNER)
-            throw new RuntimeException("Access denied: Not a venue owner");
-        return user;
+    public void checkVenueOwner(User user) {
+        if(user.getRole() != UserRole.VENUE_OWNER)
+            throw new AccessDeniedException("Access denied: Not a venue owner");
     }
 
     public void checkAccess(User user, Modifier modifier) {
         if(!modifier.getModifierGroup().getProduct().getVenue().getOwner().getId().equals(user.getId()))
-            throw new RuntimeException("Access denied: You don't own this modifier");
+            throw new AccessDeniedException("Access denied: venue doesn't own this modifier");
     }
 
     public void checkAccess(User user, ModifierGroup modifierGroup) {
         if(!modifierGroup.getProduct().getVenue().getOwner().getId().equals(user.getId()))
-            throw new RuntimeException("Access denied: You don't own this group");
+            throw new AccessDeniedException("Access denied: venue doesn't own this group");
     }
 }

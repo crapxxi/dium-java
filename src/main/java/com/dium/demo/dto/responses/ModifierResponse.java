@@ -1,10 +1,11 @@
-package com.dium.demo.dto.product_modifier;
+package com.dium.demo.dto.responses;
 
 import java.math.BigDecimal;
 
-public record ModifierDTO(
+public record ModifierResponse(
         Long id,
         String name,
         BigDecimal priceDelta,
         Boolean inStock
+
 ) { }

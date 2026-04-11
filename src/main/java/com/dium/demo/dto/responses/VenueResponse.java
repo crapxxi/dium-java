@@ -1,8 +1,8 @@
-package com.dium.demo.dto.venue_product;
+package com.dium.demo.dto.responses;
 
 import java.math.BigDecimal;
 
-public record VenueDTO(
+public record VenueResponse(
         Long id,
         String name,
         String description,

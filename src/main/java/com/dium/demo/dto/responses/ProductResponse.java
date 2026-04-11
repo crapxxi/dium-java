@@ -1,10 +1,10 @@
-package com.dium.demo.dto.venue_product;
+package com.dium.demo.dto.responses;
 
 import com.dium.demo.enums.ProductCategory;
 
 import java.math.BigDecimal;
 
-public record ProductDTO(
+public record ProductResponse(
         Long id,
         String name,
         BigDecimal price,

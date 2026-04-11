@@ -7,6 +7,6 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface ModifierGroupRepository extends JpaRepository<ModifierGroup, Long> {
+public interface ModifierGroupRepository extends BaseRepository<ModifierGroup, Long> {
     List<ModifierGroup> findAllByProductIdAndIsDeletedFalse(Long productId);
 }

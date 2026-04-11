@@ -22,7 +22,7 @@ public class OrderExpirationService {
     @Scheduled(fixedRate = 60000)
     @Transactional
     public void cancelExpiredOrders() {
-        LocalDateTime expirationTime = LocalDateTime.now().minusMinutes(15);
+        LocalDateTime expirationTime = LocalDateTime.now().minusMinutes(5);
 
         List<Order> expiredOrders = orderRepository.findAllByStatusAndCreatedAtBefore(
                 OrderStatus.PENDING,
@@ -34,7 +34,7 @@ public class OrderExpirationService {
 
             expiredOrders.forEach(order -> {
                 order.setStatus(OrderStatus.CANCELLED);
-                order.setComment(order.getComment() + " [Авто-отмена: не подтвержден в течение 15 мин]");
+                order.setComment("[Авто-отмена: не подтвержден в течение 5 мин]");
             });
 
             orderRepository.saveAll(expiredOrders);

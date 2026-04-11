@@ -1,19 +1,21 @@
 package com.dium.demo.services;
 
-import com.dium.demo.dto.auth.AuthResponse;
-import com.dium.demo.dto.auth.LoginRequest;
-import com.dium.demo.dto.auth.RegisterRequest;
-import com.dium.demo.dto.auth.UserResponse;
+import com.dium.demo.dto.responses.AuthResponse;
+import com.dium.demo.dto.requests.LoginRequest;
+import com.dium.demo.dto.requests.RegisterRequest;
+import com.dium.demo.dto.responses.UserResponse;
 import com.dium.demo.enums.UserRole;
 import com.dium.demo.mappers.UserMapper;
 import com.dium.demo.models.User;
 import com.dium.demo.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
     private final UserRepository userRepository;
     private final JwtService jwtService;
-    private final UserDetailsService userDetailsService;
+    private final CustomUserDetailsService userDetailsService;
     private final AuthenticationManager authenticationManager;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
@@ -41,16 +43,16 @@ public class AuthService {
                     jwtToken,
                     request.phone()
             );
+        } catch (AuthenticationCredentialsNotFoundException ex) {
+            throw new BadCredentialsException("Phone or password is incorrect!");
         } catch (Exception e) {
-            System.err.println("DEBUG LOGIN ERROR: " + e.getClass().getName() + " - " + e.getMessage());
-            throw new RuntimeException("Phone or password is incorrect!");
+            throw new RuntimeException("An error was occur while authenticating user: " + e.getMessage());
         }
     }
 
     @Transactional
     public UserResponse register(RegisterRequest request) {
-        if(userRepository.existsByPhone(request.phone()))
-            throw new RuntimeException("Phone is already in the system");
+        checkHasRegistered(request.phone(), "User has already registered!");
 
         User user = userMapper.toEntity(request);
 
@@ -63,10 +65,8 @@ public class AuthService {
 
     @Transactional
     @PreAuthorize("hasRole('ADMIN')")
-    public UserResponse venueRegister( RegisterRequest request) {
-
-        if(userRepository.existsByPhone(request.phone()))
-            throw new RuntimeException("Phone is already in the system");
+    public UserResponse venueRegister(RegisterRequest request) {
+        checkHasRegistered(request.phone(), "Venue owner has already registered!");
 
         User user = userMapper.toEntity(request);
 
@@ -78,10 +78,14 @@ public class AuthService {
     }
 
     @Transactional(readOnly = true)
-    public UserResponse getMe(UserDetails userDetails) {
-        if (userDetails instanceof User user) {
-            return userMapper.toResponse(user);
-        }
-        throw new RuntimeException("Not Authorized");
+    public UserResponse getMe() {
+        User user = userDetailsService.getCurrentUser();
+
+        return userMapper.toResponse(user);
+    }
+
+    private void checkHasRegistered(String phone, String message) {
+        if(userRepository.existsByPhone(phone))
+            throw new AccessDeniedException(message);
     }
 }

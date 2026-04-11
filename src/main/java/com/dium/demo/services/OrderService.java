@@ -1,24 +1,25 @@
 package com.dium.demo.services;
 
-import com.dium.demo.dto.order.CreateOrderRequest;
-import com.dium.demo.dto.order.OrderItemRequest;
-import com.dium.demo.dto.order.OrderResponse;
+import com.dium.demo.dto.requests.OrderRequest;
+import com.dium.demo.dto.requests.OrderItemRequest;
+import com.dium.demo.dto.responses.OrderResponse;
 import com.dium.demo.enums.OrderStatus;
 import com.dium.demo.enums.UserRole;
+import com.dium.demo.exceptions.AccessDeniedException;
+import com.dium.demo.exceptions.BusinessLogicException;
 import com.dium.demo.mappers.OrderMapper;
 import com.dium.demo.models.*;
 import com.dium.demo.repositories.ModifierRepository;
 import com.dium.demo.repositories.OrderRepository;
 import com.dium.demo.repositories.ProductRepository;
 import com.dium.demo.repositories.VenueRepository;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,16 +32,16 @@ public class OrderService {
     private final VenueRepository venueRepository;
     private final OrderMapper orderMapper;
     private final ModifierRepository modifierRepository;
+    private final CustomUserDetailsService userDetailsService;
 
     @Transactional
-    public OrderResponse createOrder(UserDetails userDetails, CreateOrderRequest request) {
-        User user = (User) userDetails;
+    public OrderResponse createOrder(OrderRequest request) {
+        User user = userDetailsService.getCurrentUser();
+        Venue venue = venueRepository.findByIdOrThrow(request.venueId());
 
-        Venue venue = venueRepository.findById(request.venueId())
-                .orElseThrow(() -> new RuntimeException("Venue not found"));
-
-        if(!venue.getIsWorking())
-            throw new RuntimeException("Venue is not working");
+        if (!venue.getIsWorking()) {
+            throw new BusinessLogicException("Venue is not working");
+        }
 
         Order order = new Order();
         order.setUser(user);
@@ -56,29 +57,27 @@ public class OrderService {
 
         for (OrderItemRequest itemRequest : request.items()) {
             if (itemRequest.count() == null || itemRequest.count() <= 0) {
-                throw new RuntimeException("Count must be greater than 0");
+                throw new BusinessLogicException("Count must be greater than 0");
             }
 
-            Product product = productRepository.findById(itemRequest.productId())
-                    .orElseThrow(() -> new RuntimeException("Product not found: " + itemRequest.productId()));
+            Product product = productRepository.findByIdOrThrow(itemRequest.productId());
 
             if (!product.getInStock()) {
-                throw new RuntimeException("Product " + product.getName() + " is not in stock");
+                throw new BusinessLogicException("Product " + product.getName() + " is not in stock");
             }
 
             if (!product.getVenue().getId().equals(venue.getId())) {
-                throw new RuntimeException("Product is not from this venue");
+                throw new BusinessLogicException("Access denied: product is not from this venue");
             }
 
             BigDecimal itemPrice = product.getPrice();
-
             List<Modifier> selectedModifiers = new ArrayList<>();
 
             if (itemRequest.modifierIds() != null && !itemRequest.modifierIds().isEmpty()) {
                 selectedModifiers = modifierRepository.findAllById(itemRequest.modifierIds());
                 for (Modifier modifier : selectedModifiers) {
                     if (!modifier.getModifierGroup().getProduct().getId().equals(product.getId())) {
-                        throw new RuntimeException("Invalid modifier for product: " + product.getName());
+                        throw new BusinessLogicException("Access denied: invalid modifier for product: " + product.getName());
                     }
                     itemPrice = itemPrice.add(modifier.getPriceDelta());
                 }
@@ -95,8 +94,7 @@ public class OrderService {
             orderItem.setPriceAtPurchase(itemPrice);
             orderItem.setModifiers(selectedModifiers);
 
-            BigDecimal itemTotal = itemPrice.multiply(BigDecimal.valueOf(itemRequest.count()));
-            totalSum = totalSum.add(itemTotal);
+            totalSum = totalSum.add(itemPrice.multiply(BigDecimal.valueOf(itemRequest.count())));
             orderItems.add(orderItem);
         }
 
@@ -109,65 +107,81 @@ public class OrderService {
         }
 
         if (totalSum.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new RuntimeException("Order total sum must be greater than zero");
+            throw new BusinessLogicException("Order total sum must be greater than zero");
         }
 
         order.setItems(orderItems);
         order.setTotalSum(totalSum);
 
-        String finalPaymentMethod = (request.paymentFrom() != null && !request.paymentFrom().isEmpty())
+        String finalPaymentFrom = (request.paymentFrom() != null && !request.paymentFrom().isEmpty())
                 ? request.paymentFrom()
                 : user.getPaymentFrom();
 
-        if (finalPaymentMethod == null || finalPaymentMethod.isEmpty()) {
-            throw new RuntimeException("Payment method is required!");
+        if (finalPaymentFrom == null || finalPaymentFrom.isEmpty()) {
+            throw new BusinessLogicException("Payment from is required!");
         }
-        order.setPaymentFrom(finalPaymentMethod);
+
+        order.setPaymentFrom(finalPaymentFrom);
 
         if (user.getPaymentFrom() == null || user.getPaymentFrom().isEmpty()) {
-            user.setPaymentFrom(finalPaymentMethod);
+            user.setPaymentFrom(finalPaymentFrom);
         }
 
         Order savedOrder = orderRepository.save(order);
         savedOrder.setPickupCode(generatePickupCode(savedOrder.getId()));
 
-        return orderMapper.toResponse(orderRepository.save(savedOrder));
+        return orderMapper.toResponse(savedOrder);
     }
     @Transactional
-    public OrderResponse updateStatus(UserDetails userDetails, Long orderId, OrderStatus newStatus) {
-        if(!(userDetails instanceof  User user) || user.getRole() != UserRole.VENUE_OWNER)
-            throw new RuntimeException("You haven't permission");
+    public void updateStatus(Long orderId) {
+        User user = userDetailsService.getCurrentUser();
 
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
-//        if(newStatus == OrderStatus.READY) {
-//            // Уведомление
-//        }
+        checkVenueOwner(user);
 
-        if(!order.getVenue().getOwner().getId().equals(user.getId()))
-            throw new RuntimeException("You haven't permission");
+        Order order = orderRepository.findByIdOrThrow(orderId);
 
-        order.setStatus(newStatus);
-        return orderMapper.toResponse(orderRepository.save(order));
+        checkAccess(user, order);
+
+        switch (order.getStatus()) {
+            case PENDING -> order.setStatus(OrderStatus.PREPARING);
+            case PREPARING -> order.setStatus(OrderStatus.READY);
+            case READY -> order.setStatus(OrderStatus.COMPLETED);
+            default -> throw new BusinessLogicException("Wrong status type");
+        }
+    }
+
+    @Transactional
+    public void cancelOrder(Long orderId) {
+        User user = userDetailsService.getCurrentUser();
+
+        checkVenueOwner(user);
+
+        Order order = orderRepository.findByIdOrThrow(orderId);
+
+        checkAccess(user, order);
+
+        if(!order.getStatus().equals(OrderStatus.PENDING))
+            throw new BusinessLogicException("Order is accepted, can't cancel");
+
+        order.setStatus(OrderStatus.CANCELLED);
     }
 
     private Integer generatePickupCode(Long orderId) {
         return (int) ((orderId * 48271) % 9000 + 1000);
     }
-    public List<OrderResponse> getOrdersByUserId(UserDetails userDetails) {
-
-        if(!(userDetails instanceof User user))
-            throw new RuntimeException("not authorized");
+    public List<OrderResponse> getOrdersByUserId() {
+        User user = userDetailsService.getCurrentUser();
 
         return orderMapper.toResponseList(orderRepository.findAllByUserIdOrderByCreatedAtDesc(user.getId()));
     }
 
     @Transactional(readOnly = true)
-    public List<OrderResponse> getKitchenOrders(UserDetails userDetails) {
-        User user = checkAuth(userDetails);
+    public List<OrderResponse> getKitchenOrders() {
+        User user = userDetailsService.getCurrentUser();
+        checkVenueOwner(user);
 
-        Long venueId = venueRepository.findByOwnerId(user.getId())
-                .orElseThrow(()-> new RuntimeException("user don't have a venue")).getId();
+        Long venueId = venueRepository.findByOwner_Id(user.getId())
+                .orElseThrow(()-> new EntityNotFoundException("User doesn't have a venue")).getId();
 
         List<OrderStatus> hiddenStatuses = List.of(
                 OrderStatus.COMPLETED,
@@ -181,10 +195,12 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public List<OrderResponse> getOrderHistory(UserDetails userDetails) {
-        User user = checkAuth(userDetails);
-        Long venueId = venueRepository.findByOwnerId(user.getId())
-                .orElseThrow(() -> new RuntimeException("user don't have a venue")).getId();
+    public List<OrderResponse> getOrderHistory() {
+        User user = userDetailsService.getCurrentUser();
+        checkVenueOwner(user);
+
+        Long venueId = venueRepository.findByOwner_Id(user.getId())
+                .orElseThrow(() -> new EntityNotFoundException("User doesn't have a venue")).getId();
 
         List<OrderStatus> hiddenStatuses = List.of(
                 OrderStatus.PENDING,
@@ -200,21 +216,25 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public String getKaspiUrl(Long orderId) {
-        Order order = orderRepository.findById(orderId).orElseThrow(() -> new RuntimeException("order not found"));
+        Order order = orderRepository.findByIdOrThrow(orderId);
 
         Venue venue = order.getVenue();
 
         if (venue.getKaspiUrl() == null || venue.getKaspiUrl().isBlank()) {
-            throw new RuntimeException("Заведение еще не добавило ссылку Kaspi");
+            throw new EntityNotFoundException("Заведение еще не добавило ссылку Kaspi");
         }
 
         return venue.getKaspiUrl();
     }
 
-    public User checkAuth(UserDetails userDetails) {
-        if(!(userDetails instanceof User user) || user.getRole() != UserRole.VENUE_OWNER)
-            throw new RuntimeException("have not permission, not a venue owner");
-        return user;
+    private void checkVenueOwner(User user) {
+        if(!user.getRole().equals(UserRole.VENUE_OWNER))
+            throw new AccessDeniedException("Access denied: not venue owner");
+    }
+
+    private void checkAccess(User user, Order order) {
+        if(!order.getVenue().getOwner().getId().equals(user.getId()))
+            throw new AccessDeniedException("Access denied: venue doesn't own this order");
     }
 
 }

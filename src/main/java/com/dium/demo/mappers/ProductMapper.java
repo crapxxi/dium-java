@@ -1,6 +1,7 @@
 package com.dium.demo.mappers;
 
-import com.dium.demo.dto.venue_product.ProductDTO;
+import com.dium.demo.dto.requests.ProductRequest;
+import com.dium.demo.dto.responses.ProductResponse;
 import com.dium.demo.models.Product;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -10,18 +11,20 @@ import java.util.List;
 
 @Mapper(componentModel = "spring")
 public interface ProductMapper {
-    ProductDTO toDto(Product product);
+    ProductResponse toResponse(Product product);
 
-    List<ProductDTO> toDtoList(List<Product> products);
+    List<ProductResponse> toResponseList(List<Product> products);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "venue", ignore = true)
     @Mapping(target = "modifierGroups", ignore = true)
-    Product toEntity(ProductDTO productDto);
+    @Mapping(target = "deleted", ignore = true)
+    Product toEntity(ProductRequest request);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "venue", ignore = true)
     @Mapping(target = "imageUrl", ignore = true)
     @Mapping(target = "modifierGroups", ignore = true)
-    void updateProductFromDto(ProductDTO dto, @MappingTarget Product entity);
+    @Mapping(target = "deleted", ignore = true)
+    void updateProductFromRequest(ProductRequest request, @MappingTarget Product entity);
 }

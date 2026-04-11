@@ -1,6 +1,7 @@
 package com.dium.demo.mappers;
 
-import com.dium.demo.dto.venue_product.VenueDTO;
+import com.dium.demo.dto.requests.VenueRequest;
+import com.dium.demo.dto.responses.VenueResponse;
 import com.dium.demo.models.Venue;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -10,19 +11,20 @@ import java.util.List;
 
 @Mapper(componentModel = "spring")
 public interface VenueMapper {
-    VenueDTO toDto(Venue venue);
-    List<VenueDTO> toDtoList(List<Venue> venues);
+    VenueResponse toResponse(Venue venue);
+    List<VenueResponse> toResponseList(List<Venue> venues);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "owner", ignore = true)
     @Mapping(target = "products", ignore = true)
     @Mapping(target = "imageUrl", ignore = true)
     @Mapping(target = "deliveryPrice", ignore = true)
-    Venue toEntity(VenueDTO venueDto);
+    Venue toEntity(VenueRequest request);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "owner", ignore = true)
     @Mapping(target = "products", ignore = true)
     @Mapping(target = "imageUrl", ignore = true)
-    void updateVenueFromDto(VenueDTO dto, @MappingTarget Venue entity);
+    @Mapping(target = "deliveryPrice",ignore = true)
+    void updateVenueFromRequest(VenueRequest request, @MappingTarget Venue entity);
 }

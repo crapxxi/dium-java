@@ -1,13 +1,16 @@
 package com.dium.demo.services;
 
-import com.dium.demo.dto.venue_product.VenueDTO;
+import com.dium.demo.dto.requests.VenueRequest;
+import com.dium.demo.dto.responses.VenueResponse;
 import com.dium.demo.enums.UserRole;
+import com.dium.demo.exceptions.AccessDeniedException;
+import com.dium.demo.exceptions.BusinessLogicException;
 import com.dium.demo.mappers.VenueMapper;
 import com.dium.demo.models.User;
 import com.dium.demo.models.Venue;
 import com.dium.demo.repositories.VenueRepository;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -15,7 +18,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -23,88 +25,91 @@ public class VenueService {
     private final VenueRepository venueRepository;
     private final VenueMapper venueMapper;
     private final FileService fileService;
+    private final CustomUserDetailsService userDetailsService;
 
     @Transactional(readOnly = true)
-    public List<VenueDTO> getAllVenues() {
-        return venueMapper.toDtoList(venueRepository.findAll());
+    public List<VenueResponse> getAllVenues() {
+        return venueMapper.toResponseList(venueRepository.findAll());
     }
     @Transactional(readOnly = true)
-    public VenueDTO getVenueById(Long venueId) {
-        return venueMapper.toDto(venueRepository.findById(venueId)
-                .orElseThrow(() -> new RuntimeException("Venue is not found!")));
+    public VenueResponse getVenueById(Long venueId) {
+        return venueMapper.toResponse(venueRepository.findByIdOrThrow(venueId));
     }
 
     @Transactional(readOnly = true)
-    public VenueDTO getOwnerVenue(UserDetails userDetails) {
-        if(!(userDetails instanceof User user) || user.getRole() != UserRole.VENUE_OWNER)
-            throw new RuntimeException("Only a venue owner can get own venues");
+    public VenueResponse getOwnerVenue() {
+        User user = userDetailsService.getCurrentUser();
 
-        return venueMapper.toDto(venueRepository.findByOwnerId(user.getId())
-                .orElseThrow(() -> new RuntimeException("Venue not found")));
+        checkVenueOwner(user);
+
+        return venueMapper.toResponse(venueRepository.findByOwner_Id(user.getId())
+                .orElseThrow(() -> new EntityNotFoundException("Venue not found")));
     }
 
     @Transactional
-    public VenueDTO updateVenue(UserDetails userDetails, VenueDTO venueDTO, MultipartFile image) throws IOException {
-        if(!(userDetails instanceof User user) || user.getRole() != UserRole.VENUE_OWNER)
-            throw new RuntimeException("Only a venue owner can update venue");
+    public VenueResponse updateVenue(VenueRequest request, MultipartFile image) throws IOException {
+        User user = userDetailsService.getCurrentUser();
+
+        checkVenueOwner(user);
+
+        Venue venue = venueRepository.findByOwner_Id(user.getId())
+                .orElseThrow(() -> new EntityNotFoundException("Venue not found"));
 
 
-        Venue venue = venueRepository.findByOwnerId(user.getId())
-                .orElseThrow(() -> new RuntimeException("Venue not found"));
-
-
-        if (!Objects.equals(venue.getOwner().getId(), user.getId()))
-            throw new RuntimeException("You are not the owner of this venue");
-
-        System.out.println("Старый URL в БД: " + venue.getImageUrl());
-        if (venueDTO.deliveryPrice() != null && venueDTO.deliveryPrice().compareTo(BigDecimal.ZERO) < 0) {
-            throw new RuntimeException("Delivery price cannot be negative");
-        }
-        venueMapper.updateVenueFromDto(venueDTO, venue);
+        checkDeliveryPriceForNegative(request.deliveryPrice());
+        venueMapper.updateVenueFromRequest(request, venue);
 
         if (image != null && !image.isEmpty()) {
-            System.out.println("Файл получен: " + image.getOriginalFilename());
             fileService.deleteFile(venue.getImageUrl());
             String newPath = fileService.saveFile(image);
             venue.setImageUrl(newPath);
-            System.out.println("Новый URL установлен: " + newPath);
         }
 
-        venue.setDeliveryPrice(venueDTO.deliveryPrice());
+        venue.setDeliveryPrice(request.deliveryPrice());
 
-        return venueMapper.toDto(venueRepository.save(venue));
+        return venueMapper.toResponse(venueRepository.save(venue));
     }
 
     @Transactional
-    public VenueDTO createVenue(UserDetails userDetails, VenueDTO venueDTO, MultipartFile image) throws IOException {
-        if (!(userDetails instanceof User user) || user.getRole() != UserRole.VENUE_OWNER)
-            throw new RuntimeException("Only a venue owner can create a venue");
+    public VenueResponse createVenue(VenueRequest request, MultipartFile image) throws IOException {
+        User user = userDetailsService.getCurrentUser();
+        checkVenueOwner(user);
 
-        if (venueRepository.findByOwnerId(user.getId()).isPresent()) {
+        if (venueRepository.existsByOwner_Id(user.getId()))
             throw new RuntimeException("User already has a venue");
-        }
-        if (venueDTO.deliveryPrice() == null || venueDTO.deliveryPrice().compareTo(BigDecimal.ZERO) < 0) {
-            throw new RuntimeException("Invalid delivery price");
-        }
 
-        Venue venue = venueMapper.toEntity(venueDTO);
+        checkDeliveryPriceForNegative(request.deliveryPrice());
+
+        Venue venue = venueMapper.toEntity(request);
         venue.setOwner(user);
         if (image != null && !image.isEmpty()) {
             String path = fileService.saveFile(image);
             venue.setImageUrl(path);
         }
 
-        return venueMapper.toDto(venueRepository.save(venue));
+        return venueMapper.toResponse(venueRepository.save(venue));
     }
 
     @Transactional
-    public void toggleWork(UserDetails userDetails) {
-        if(!(userDetails instanceof User user) || !user.getRole().equals(UserRole.VENUE_OWNER))
-            throw new RuntimeException("Only a venue owner can create a venue");
+    public void toggleWork() {
+        User user = userDetailsService.getCurrentUser();
+        checkVenueOwner(user);
 
-        Venue venue = venueRepository.findByOwnerId(user.getId()).orElseThrow(() -> new RuntimeException("user doesn't have a venue"));
+        Venue venue = venueRepository.findByOwner_Id(user.getId())
+                .orElseThrow(() -> new EntityNotFoundException("User doesn't have a venue"));
 
         boolean currentStatus = (venue.getIsWorking() != null) && venue.getIsWorking();
         venue.setIsWorking(!currentStatus);
     }
+
+    private void checkVenueOwner(User user) {
+        if(!user.getRole().equals(UserRole.VENUE_OWNER))
+            throw new AccessDeniedException("Access denied: not venue owner");
+    }
+
+    private void checkDeliveryPriceForNegative(BigDecimal deliveryPrice) {
+        if(deliveryPrice == null || deliveryPrice.compareTo(BigDecimal.ZERO) < 0)
+            throw new BusinessLogicException("Delivery price can't be negative");
+    }
+
 }

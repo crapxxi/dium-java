@@ -1,101 +1,77 @@
 package com.dium.demo.controllers;
 
-import com.dium.demo.dto.product_modifier.ModifierGroupDTO;
-import com.dium.demo.dto.venue_product.ProductDTO;
-import com.dium.demo.models.User;
+import com.dium.demo.dto.requests.ModifierGroupRequest;
+import com.dium.demo.dto.requests.ProductRequest;
+import com.dium.demo.dto.responses.ModifierGroupResponse;
+import com.dium.demo.dto.responses.ProductResponse;
 import com.dium.demo.services.ModifierService;
 import com.dium.demo.services.ProductService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Encoding;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/products")
-@Tag(name = "products")
 public class ProductController {
     private final ProductService productService;
     private final ModifierService modifierService;
 
     @GetMapping("/venue/{venueId}")
-    @Operation(summary = "get products by venue")
-    public ResponseEntity<?> getByVenue(@PathVariable Long venueId) {
+    public ResponseEntity<List<ProductResponse>> getByVenue(@PathVariable Long venueId) {
         return ResponseEntity.ok(productService.getMenuByVenueId(venueId));
     }
 
+    @PreAuthorize("hasRole('VENUE_OWNER')")
     @PostMapping(value = "/venue/products", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(
-            summary = "create product",
-            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    content = @Content(
-                            encoding = @Encoding(name = "product", contentType = "application/json")
-                    )
-            )
-    )
-    public ResponseEntity<?> addProduct(
-            @AuthenticationPrincipal UserDetails userDetails,
-            @RequestPart("product") ProductDTO productDto,
+    public ResponseEntity<ProductResponse> addProduct(
+            @Valid @RequestPart("productRequest") ProductRequest request,
             @RequestPart("image") MultipartFile image
     ) throws IOException {
-        return ResponseEntity.ok(productService.addProduct(userDetails, productDto, image));
+        return ResponseEntity.ok(productService.addProduct(request, image));
     }
 
+    @PreAuthorize("hasRole('VENUE_OWNER')")
     @PutMapping(value = "/{productId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(
-            summary = "update product",
-            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    content = @Content(
-                            encoding = @Encoding(name = "product", contentType = "application/json")
-                    )
-            )
-    )
-    public ResponseEntity<ProductDTO> updateProduct(
-            @AuthenticationPrincipal User user,
+    public ResponseEntity<ProductResponse> updateProduct(
             @PathVariable Long productId,
-            @RequestPart("product") ProductDTO dto,
+            @Valid @RequestPart("productRequest") ProductRequest request,
             @RequestPart(value = "image", required = false) MultipartFile image
     ) throws IOException {
-        return ResponseEntity.ok(productService.updateProduct(user, productId, dto, image));
+        return ResponseEntity.ok(productService.updateProduct(productId, request, image));
     }
 
+    @PreAuthorize("hasRole('VENUE_OWNER')")
     @DeleteMapping("/{productId}")
-    @Operation(summary = "delete product")
     public ResponseEntity<Void> deleteProduct(
-            @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long productId
     ) {
-        productService.deleteProduct(userDetails, productId);
+        productService.deleteProduct(productId);
         return ResponseEntity.ok().build();
     }
-
+    @PreAuthorize("hasRole('VENUE_OWNER')")
     @PatchMapping("/{productId}")
-    @Operation(summary = "in stock, out stock")
-    public ResponseEntity<?> toggleStock(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long productId) {
-        productService.toggleStock(userDetails,productId);
+    public ResponseEntity<Void> toggleStock(@PathVariable Long productId) {
+        productService.toggleStock(productId);
         return ResponseEntity.ok().build();
     }
 
+    @PreAuthorize("hasRole('VENUE_OWNER')")
     @PostMapping("/{productId}/modifier-groups")
-    @Operation(summary = "add the modifier groups")
-    public ResponseEntity<?> addModifierGroup(@AuthenticationPrincipal UserDetails userDetails,
-                                              @PathVariable Long productId,
-                                              @RequestBody ModifierGroupDTO modifierGroupDTO) {
-        return ResponseEntity.ok(modifierService.addModifierGroup(userDetails, productId, modifierGroupDTO));
+    public ResponseEntity<ModifierGroupResponse> addModifierGroup(@PathVariable Long productId,
+                                                                  @Valid @RequestBody ModifierGroupRequest request) {
+        return ResponseEntity.ok(modifierService.addModifierGroup(productId, request));
     }
 
     @GetMapping(value = "/{productId}/modifier-groups")
-    @Operation(summary = "get the modifier groups")
-    public ResponseEntity<?> getModifierGroups(@PathVariable Long productId) {
+    public ResponseEntity<List<ModifierGroupResponse>> getModifierGroups(@PathVariable Long productId) {
         return ResponseEntity.ok(modifierService.getModifierGroups(productId));
     }
 }

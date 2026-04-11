@@ -1,4 +1,4 @@
-package com.dium.demo.dto.order;
+package com.dium.demo.dto.responses;
 
 import com.dium.demo.enums.OrderStatus;
 

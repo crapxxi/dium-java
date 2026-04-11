@@ -35,27 +35,22 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                                 .dispatcherTypeMatchers(jakarta.servlet.DispatcherType.ERROR).permitAll()
-                                .requestMatchers("/error").permitAll()
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/auth/venue-register").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/venues/manage/**").hasAnyRole("VENUE_OWNER", "ADMIN")
 
-                                .requestMatchers("/api/v1/auth/**").permitAll()
-                                .requestMatchers("/api/v1/files/**").permitAll()
+                        .requestMatchers("/error").permitAll()
 
-                                .requestMatchers("/api/v1/venues/**", "/api/v1/venues").permitAll()
-                                .requestMatchers("/api/v1/products/venue/**").permitAll()
+                        .requestMatchers("/api/v1/auth/**").permitAll()
+                        .requestMatchers("/api/v1/files/**").permitAll()
 
-//                              .requestMatchers("/v3/api-docs/**").permitAll()
-//                              .requestMatchers("/swagger-ui/**").permitAll()
-//                              .requestMatchers("/swagger-ui.html").permitAll()
-//                              .requestMatchers("/swagger-resources/**").permitAll()
-//                              .requestMatchers("/webjars/**").permitAll()
-//                              .requestMatchers("/v3/api-docs").permitAll()
+                        .requestMatchers("/api/v1/venues/**", "/api/v1/venues").permitAll()
+                        .requestMatchers("/api/v1/products/venue/**").permitAll()
 
 
-                                .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                                .requestMatchers("/api/v1/auth/venue-register").hasRole("ADMIN")
 
 
-                                .anyRequest().authenticated()
+                        .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)

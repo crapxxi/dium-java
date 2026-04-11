@@ -1,67 +1,61 @@
 package com.dium.demo.controllers;
 
-import com.dium.demo.dto.product_modifier.ModifierDTO;
-import com.dium.demo.dto.product_modifier.ModifierGroupDTO;
+import com.dium.demo.dto.requests.ModifierGroupRequest;
+import com.dium.demo.dto.requests.ModifierRequest;
+import com.dium.demo.dto.responses.ModifierGroupResponse;
+import com.dium.demo.dto.responses.ModifierResponse;
 import com.dium.demo.services.ModifierService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/modifiers")
-@Tag(name = "Modifiers")
 public class ModifierController {
     private final ModifierService modifierService;
 
+    @PreAuthorize("hasRole('VENUE_OWNER')")
     @PutMapping("/groups/{groupId}")
-    @Operation(summary = "update modifierGroup")
-    public ResponseEntity<?> updateGroup(@AuthenticationPrincipal UserDetails userDetails,
-                                    @PathVariable Long groupId,
-                                    @RequestBody ModifierGroupDTO modifierGroupDTO) {
-        return ResponseEntity.ok(modifierService.editModifierGroup(userDetails, groupId, modifierGroupDTO));
+    public ResponseEntity<ModifierGroupResponse> updateGroup(@PathVariable Long groupId,
+                                                             @Valid @RequestBody ModifierGroupRequest request) {
+        return ResponseEntity.ok(modifierService.editModifierGroup(groupId, request));
     }
 
+    @PreAuthorize("hasRole('VENUE_OWNER')")
     @PutMapping("/{modifierId}")
-    @Operation(summary = "update modifier")
-    public ResponseEntity<?> updateModifier(@AuthenticationPrincipal UserDetails userDetails,
-                                            @PathVariable Long modifierId,
-                                            @RequestBody ModifierDTO modifierDTO) {
-        return ResponseEntity.ok(modifierService.editModifier(userDetails, modifierId, modifierDTO));
+    public ResponseEntity<ModifierResponse> updateModifier(@PathVariable Long modifierId,
+                                                           @Valid @RequestBody ModifierRequest request) {
+        return ResponseEntity.ok(modifierService.editModifier(modifierId, request));
     }
 
+    @PreAuthorize("hasRole('VENUE_OWNER')")
     @DeleteMapping("/groups/{groupId}")
-    @Operation(summary = "delete modifierGroup")
-    public ResponseEntity<?> deleteModifierGroup(@AuthenticationPrincipal UserDetails userDetails,
-                                                 @PathVariable Long groupId) {
-        modifierService.deleteModifierGroup(userDetails, groupId);
+    public ResponseEntity<Void> deleteModifierGroup(@PathVariable Long groupId) {
+        modifierService.deleteModifierGroup(groupId);
         return ResponseEntity.ok().build();
     }
+
+    @PreAuthorize("hasRole('VENUE_OWNER')")
     @PatchMapping("/groups/{groupId}/toggleRequired")
-    @Operation(summary = "toggle modifierGroup required")
-    public ResponseEntity<?> toggle(@AuthenticationPrincipal UserDetails userDetails,
-                                    @PathVariable Long groupId) {
-        modifierService.toggleRequired(userDetails, groupId);
+    public ResponseEntity<Void> toggle(@PathVariable Long groupId) {
+        modifierService.toggleRequired(groupId);
         return ResponseEntity.ok().build();
     }
 
+    @PreAuthorize("hasRole('VENUE_OWNER')")
     @DeleteMapping("/{modifierId}")
-    @Operation(summary = "delete modifier")
-    public ResponseEntity<?> deleteModifier(@AuthenticationPrincipal UserDetails userDetails,
-                                                 @PathVariable Long modifierId) {
-        modifierService.delete(userDetails, modifierId);
+    public ResponseEntity<Void> deleteModifier(@PathVariable Long modifierId) {
+        modifierService.delete(modifierId);
         return ResponseEntity.ok().build();
     }
 
+    @PreAuthorize("hasRole('VENUE_OWNER')")
     @PatchMapping("/{modifierId}")
-    @Operation(summary = "toggle stock")
-    public ResponseEntity<?> toggleStock(@AuthenticationPrincipal UserDetails userDetails,
-                                         @PathVariable Long modifierId) {
-        modifierService.toggleStock(userDetails, modifierId);
+    public ResponseEntity<Void> toggleStock(@PathVariable Long modifierId) {
+        modifierService.toggleStock(modifierId);
         return ResponseEntity.ok().build();
     }
 

@@ -1,7 +1,7 @@
 package com.dium.demo.mappers;
 
-import com.dium.demo.dto.auth.RegisterRequest;
-import com.dium.demo.dto.auth.UserResponse;
+import com.dium.demo.dto.requests.RegisterRequest;
+import com.dium.demo.dto.responses.UserResponse;
 import com.dium.demo.models.User;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
