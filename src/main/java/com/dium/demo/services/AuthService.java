@@ -138,7 +138,7 @@ public class AuthService {
                 .code(code)
                 .build();
         otpRepository.save(otpCode);
-        whatsAppService.sendMessage(phone, String.format("Код подтверждения DIUM: *%s*\n⚠\uFE0F Если вы не пытались войти в систему, просто проигнорируйте это сообщение. Код истекает через 5 минут."));
+        whatsAppService.sendMessage(phone, String.format("Код подтверждения DIUM: *%s*\n⚠\uFE0F Если вы не пытались войти в систему, просто проигнорируйте это сообщение. Код истекает через 5 минут.", code));
     }
 
     @Transactional
