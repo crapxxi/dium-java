@@ -23,7 +23,6 @@ public class User implements UserDetails {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-
     @Column(unique = true, nullable = false)
     private String phone;
 
@@ -35,6 +34,11 @@ public class User implements UserDetails {
     private UserRole role;
 
     private String paymentFrom;
+
+    @Column(nullable = false)
+    private Boolean isConfirmed = false;
+
+
 
     @Override
     @NonNull
@@ -55,7 +59,7 @@ public class User implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return true;
+        return isConfirmed;
     }
 
     @Override

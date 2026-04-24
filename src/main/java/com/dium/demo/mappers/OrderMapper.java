@@ -14,9 +14,11 @@ import java.util.List;
 public interface OrderMapper {
 
     @Mapping(source = "venue.name", target = "venueName")
+    @Mapping(source = "venue.owner.phone", target = "venueOwnerPhone")
     OrderResponse toResponse(Order order);
 
     @Mapping(source = "venue.name", target = "venueName")
+    @Mapping(source = "venue.owner.phone", target = "venueOwnerPhone")
     List<OrderResponse> toResponseList(List<Order> orders);
 
     @Mapping(target = "id", ignore = true)

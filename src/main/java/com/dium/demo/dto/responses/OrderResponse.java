@@ -17,5 +17,6 @@ public record OrderResponse(
         String address,
         String comment,
         BigDecimal deliveryFee,
-        String paymentFrom
+        String paymentFrom,
+        String venueOwnerPhone
 ){ }

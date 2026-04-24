@@ -93,7 +93,7 @@ class OrderServiceTest {
         dummyResponse = new OrderResponse(
                 1L, "Test Venue", BigDecimal.valueOf(2900), OrderStatus.PENDING,
                 1234, LocalDateTime.now(), new ArrayList<>(), "Test Address",
-                "Comment", BigDecimal.valueOf(500), "Card"
+                "Comment", BigDecimal.valueOf(500), "Card", "8777777777"
         );
     }
 

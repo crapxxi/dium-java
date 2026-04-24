@@ -26,6 +26,14 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleSpringAccessDenied(org.springframework.security.access.AccessDeniedException ex) {
+        return new ResponseEntity<>(
+                createErrorResponse(ex, HttpStatus.FORBIDDEN.value()),
+                HttpStatus.FORBIDDEN
+        );
+    }
+
     @ExceptionHandler(BusinessLogicException.class)
     public ResponseEntity<ErrorResponse> handleBusinessLogic(BusinessLogicException ex) {
         return new ResponseEntity<>(
@@ -79,6 +87,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGlobalException(Exception ex) {
+        System.out.println("LOG ERROR: Unhandled exception type: " + ex.getClass().getName());
         System.out.println("LOG ERROR: " + "unhandled exception" + ex.getMessage());
         return new ResponseEntity<>(
                 new ErrorResponse(

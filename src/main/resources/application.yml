@@ -7,6 +7,10 @@ spring:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
+  cache:
+    type: jcache
+    jcache:
+      provider: com.github.benmanes.caffeine.jcache.spi.CaffeineCachingProvider
 
 jwt:
   secret: ${JWT_KEY:default_secret_for_dev_only_12345}
@@ -15,6 +19,42 @@ cloudinary:
   cloud_name: ${CLOUDINARY_CLOUD_NAME:temp}
   api_key: ${CLOUDINARY_API_KEY:12345}
   api_secret: ${CLOUDINARY_API_SECRET:secret}
+
+whatsapp:
+  api:
+    url: ${WHATSAPP_API_URL}
+    instance:
+      id: ${WHATSAPP_INSTANCE_ID}
+      token: ${WHATSAPP_API_TOKEN}
+
+bucket4j:
+  enabled: true
+  filters:
+    - cache-name: buckets
+      url: /api/.*
+      strategy: first
+      http-response-body: "{ \"status\": 429, \"error\": \"Too Many Requests\", \"message\": \"Лимит запросов исчерпан. Попробуйте позже.\" }"
+      rate-limits:
+        - execute-condition: "getHttpServletRequest().getRequestURI().contains('/api/auth')"
+          cache-key: "getHeader('X-Forwarded-For') != null ? getHeader('X-Forwarded-For').split(',')[0] : getRemoteAddr()"
+          bandwidths:
+            - capacity: 5
+              time: 1
+              unit: minutes
+
+        - execute-condition: "getHttpServletRequest().getRequestURI().contains('/api/whatsapp')"
+          cache-key: "getHeader('X-Forwarded-For') != null ? getHeader('X-Forwarded-For').split(',')[0] : getRemoteAddr()"
+          bandwidths:
+            - capacity: 10
+              time: 1
+              unit: hours
+
+        - cache-key: "getHeader('X-Forwarded-For') != null ? getHeader('X-Forwarded-For').split(',')[0] : getRemoteAddr()"
+          bandwidths:
+            - capacity: 100
+              time: 1
+              unit: minutes
+
 
 server:
   port: ${PORT:8080}

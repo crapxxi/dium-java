@@ -55,7 +55,7 @@ class OrderControllerTest {
     void create_Success() throws Exception {
         OrderItemRequest itemRequest = new OrderItemRequest(1L, 2, List.of(10L));
         OrderRequest request = new OrderRequest(1L, List.of(itemRequest), "Address", "Comment", BigDecimal.TEN, "Card");
-        OrderResponse response = new OrderResponse(100L, "Venue Name", BigDecimal.valueOf(2500), OrderStatus.PENDING, 1234, LocalDateTime.now(), List.of(), "Address", "Comment", BigDecimal.TEN, "Card");
+        OrderResponse response = new OrderResponse(100L, "Venue Name", BigDecimal.valueOf(2500), OrderStatus.PENDING, 1234, LocalDateTime.now(), List.of(), "Address", "Comment", BigDecimal.TEN, "Card", "87777777777");
 
         when(orderService.createOrder(any(OrderRequest.class))).thenReturn(response);
 
@@ -79,7 +79,7 @@ class OrderControllerTest {
 
     @Test
     void getUserOrders_Success() throws Exception {
-        OrderResponse response = new OrderResponse(100L, "V", BigDecimal.ONE, OrderStatus.PENDING, 1, LocalDateTime.now(), List.of(), "A", "C", BigDecimal.ZERO, "P");
+        OrderResponse response = new OrderResponse(100L, "V", BigDecimal.ONE, OrderStatus.PENDING, 1, LocalDateTime.now(), List.of(), "A", "C", BigDecimal.ZERO, "P", "87777777777");
         when(orderService.getOrdersByUserId()).thenReturn(List.of(response));
 
         mockMvc.perform(get("/api/v1/orders/user"))
