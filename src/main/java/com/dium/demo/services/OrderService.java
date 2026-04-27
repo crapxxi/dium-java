@@ -28,13 +28,13 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class OrderService {
-
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
     private final VenueRepository venueRepository;
     private final OrderMapper orderMapper;
     private final ModifierRepository modifierRepository;
     private final CustomUserDetailsService userDetailsService;
+    private final WhatsAppService whatsAppService;
 
     @Transactional
     public OrderResponse createOrder(OrderRequest request) {
@@ -145,9 +145,15 @@ public class OrderService {
         checkAccess(user, order);
 
         switch (order.getStatus()) {
-            case PENDING -> order.setStatus(OrderStatus.PREPARING);
+            case PENDING -> {
+                order.setStatus(OrderStatus.PREPARING);
+                whatsAppService.sendMessage(order.getUser().getPhone(), String.format("Ваш заказ #%d готовится!", order.getId()));
+            }
             case PREPARING -> order.setStatus(OrderStatus.READY);
-            case READY -> order.setStatus(OrderStatus.COMPLETED);
+            case READY -> {
+                order.setStatus(OrderStatus.COMPLETED);
+                whatsAppService.sendMessage(order.getUser().getPhone(), String.format("Ваш заказ #%d готов!", order.getId()));
+            }
             default -> throw new BusinessLogicException("Wrong status type");
         }
     }
@@ -166,6 +172,7 @@ public class OrderService {
             throw new BusinessLogicException("Order is accepted, can't cancel");
 
         order.setStatus(OrderStatus.CANCELLED);
+        whatsAppService.sendMessage(order.getUser().getPhone(), String.format("Ваш заказ #%d отменен", order.getId()));
     }
 
     private Integer generatePickupCode(Long orderId) {

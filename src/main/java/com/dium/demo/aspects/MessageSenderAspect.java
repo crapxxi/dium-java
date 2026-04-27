@@ -23,7 +23,7 @@ public class MessageSenderAspect {
     public void sendMessageToVenueOwner(OrderResponse orderResponse) {
         whatsAppService.sendMessage(
                 orderResponse.venueOwnerPhone(),
-                "Новый заказ #" + orderResponse.id()
+                String.format("Новый заказ #%d\nОплата от:%s, Сумма оплаты:%.2f\nКомментарии:%s", orderResponse.id(), orderResponse.paymentFrom(),orderResponse.totalSum(), orderResponse.comment())
         );
     }
 }
