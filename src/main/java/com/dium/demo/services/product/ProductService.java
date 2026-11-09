@@ -1,4 +1,4 @@
-package com.dium.demo.services;
+package com.dium.demo.services.product;
 
 import com.dium.demo.dto.requests.ProductRequest;
 import com.dium.demo.dto.responses.ProductResponse;
@@ -11,6 +11,8 @@ import com.dium.demo.models.User;
 import com.dium.demo.models.Venue;
 import com.dium.demo.repositories.ProductRepository;
 import com.dium.demo.repositories.VenueRepository;
+import com.dium.demo.services.FileService;
+import com.dium.demo.services.auth.CustomUserDetailsService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,7 +22,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor

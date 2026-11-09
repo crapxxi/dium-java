@@ -5,9 +5,9 @@ import com.dium.demo.dto.requests.RegisterRequest;
 import com.dium.demo.dto.responses.AuthResponse;
 import com.dium.demo.dto.responses.UserResponse;
 import com.dium.demo.enums.UserRole;
-import com.dium.demo.services.AuthService;
-import com.dium.demo.services.CustomUserDetailsService;
-import com.dium.demo.services.JwtService;
+import com.dium.demo.services.auth.impl.AuthServiceImpl;
+import com.dium.demo.services.auth.CustomUserDetailsService;
+import com.dium.demo.services.auth.JwtService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,7 +33,7 @@ class AuthControllerTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @MockitoBean
-    private AuthService authService;
+    private AuthServiceImpl authServiceImpl;
 
     @MockitoBean
     private JwtService jwtService;
@@ -46,7 +46,7 @@ class AuthControllerTest {
         RegisterRequest request = new RegisterRequest("+79991234567", "Test User", "password123");
         UserResponse response = new UserResponse(1L, "+79991234567", "Test User", UserRole.CLIENT);
 
-        when(authService.register(any(RegisterRequest.class))).thenReturn(response);
+        when(authServiceImpl.register(any(RegisterRequest.class))).thenReturn(response);
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -83,7 +83,7 @@ class AuthControllerTest {
         LoginRequest request = new LoginRequest("+79991234567", "password123");
         AuthResponse response = new AuthResponse("jwt-token-string", "+79991234567");
 
-        when(authService.login(any(LoginRequest.class))).thenReturn(response);
+        when(authServiceImpl.login(any(LoginRequest.class))).thenReturn(response);
 
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -97,7 +97,7 @@ class AuthControllerTest {
     void login_WithBadCredentials_Returns401Unauthorized() throws Exception {
         LoginRequest request = new LoginRequest("+79991234567", "wrongpassword");
 
-        when(authService.login(any(LoginRequest.class)))
+        when(authServiceImpl.login(any(LoginRequest.class)))
                 .thenThrow(new BadCredentialsException("Phone or password is incorrect!"));
 
         mockMvc.perform(post("/api/v1/auth/login")

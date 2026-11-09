@@ -8,6 +8,9 @@ import com.dium.demo.enums.UserRole;
 import com.dium.demo.mappers.UserMapper;
 import com.dium.demo.models.User;
 import com.dium.demo.repositories.UserRepository;
+import com.dium.demo.services.auth.CustomUserDetailsService;
+import com.dium.demo.services.auth.JwtService;
+import com.dium.demo.services.auth.impl.AuthServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,7 +32,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class AuthServiceTest {
+class AuthServiceImplTest {
 
     @Mock
     private UserRepository userRepository;
@@ -45,7 +48,7 @@ class AuthServiceTest {
     private PasswordEncoder passwordEncoder;
 
     @InjectMocks
-    private AuthService authService;
+    private AuthServiceImpl authServiceImpl;
 
     private final String TEST_PHONE = "+79991234567";
     private final String TEST_PASSWORD = "password123";
@@ -72,7 +75,7 @@ class AuthServiceTest {
         when(userDetailsService.loadUserByUsername(TEST_PHONE)).thenReturn(mockUserDetails);
         when(jwtService.generateToken(mockUserDetails)).thenReturn(expectedToken);
 
-        AuthResponse response = authService.login(request);
+        AuthResponse response = authServiceImpl.login(request);
 
         assertThat(response).isNotNull();
         assertThat(response.token()).isEqualTo(expectedToken);
@@ -90,7 +93,7 @@ class AuthServiceTest {
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenThrow(new AuthenticationCredentialsNotFoundException("Not found"));
 
-        assertThatThrownBy(() -> authService.login(request))
+        assertThatThrownBy(() -> authServiceImpl.login(request))
                 .isInstanceOf(BadCredentialsException.class)
                 .hasMessageContaining("Phone or password is incorrect!");
     }
@@ -102,7 +105,7 @@ class AuthServiceTest {
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenThrow(new RuntimeException("Database down"));
 
-        assertThatThrownBy(() -> authService.login(request))
+        assertThatThrownBy(() -> authServiceImpl.login(request))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("An error was occur while authenticating user: Database down");
     }
@@ -118,7 +121,7 @@ class AuthServiceTest {
         when(userRepository.save(any(User.class))).thenReturn(dummyUser);
         when(userMapper.toResponse(dummyUser)).thenReturn(dummyUserResponse);
 
-        UserResponse response = authService.register(request);
+        UserResponse response = authServiceImpl.register(request);
 
         assertThat(response).isNotNull();
         assertThat(response.phone()).isEqualTo(TEST_PHONE);
@@ -136,7 +139,7 @@ class AuthServiceTest {
         RegisterRequest request = new RegisterRequest(TEST_PHONE, "Test Name", TEST_PASSWORD);
         when(userRepository.existsByPhone(TEST_PHONE)).thenReturn(true);
 
-        assertThatThrownBy(() -> authService.register(request))
+        assertThatThrownBy(() -> authServiceImpl.register(request))
                 .isInstanceOf(AccessDeniedException.class)
                 .hasMessageContaining("User has already registered!");
 
@@ -154,7 +157,7 @@ class AuthServiceTest {
         when(userRepository.save(any(User.class))).thenReturn(dummyUser);
         when(userMapper.toResponse(dummyUser)).thenReturn(dummyUserResponse);
 
-        UserResponse response = authService.venueRegister(request);
+        UserResponse response = authServiceImpl.venueRegister(request);
 
         assertThat(response).isNotNull();
 
@@ -171,7 +174,7 @@ class AuthServiceTest {
         RegisterRequest request = new RegisterRequest(TEST_PHONE, TEST_PASSWORD, "Venue Name");
         when(userRepository.existsByPhone(TEST_PHONE)).thenReturn(true);
 
-        assertThatThrownBy(() -> authService.venueRegister(request))
+        assertThatThrownBy(() -> authServiceImpl.venueRegister(request))
                 .isInstanceOf(AccessDeniedException.class)
                 .hasMessageContaining("Venue owner has already registered!");
 
@@ -184,7 +187,7 @@ class AuthServiceTest {
         when(userDetailsService.getCurrentUser()).thenReturn(dummyUser);
         when(userMapper.toResponse(dummyUser)).thenReturn(dummyUserResponse);
 
-        UserResponse response = authService.getMe();
+        UserResponse response = authServiceImpl.getMe();
 
         assertThat(response).isNotNull();
         assertThat(response.phone()).isEqualTo(TEST_PHONE);

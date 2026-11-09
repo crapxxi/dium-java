@@ -2,7 +2,7 @@ package com.dium.demo.controllers;
 
 import com.dium.demo.dto.requests.VenueRequest;
 import com.dium.demo.dto.responses.VenueResponse;
-import com.dium.demo.services.VenueService;
+import com.dium.demo.services.venue.VenueService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;

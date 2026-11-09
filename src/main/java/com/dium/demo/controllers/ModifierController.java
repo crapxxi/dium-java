@@ -4,7 +4,7 @@ import com.dium.demo.dto.requests.ModifierGroupRequest;
 import com.dium.demo.dto.requests.ModifierRequest;
 import com.dium.demo.dto.responses.ModifierGroupResponse;
 import com.dium.demo.dto.responses.ModifierResponse;
-import com.dium.demo.services.ModifierService;
+import com.dium.demo.services.product.ModifierService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

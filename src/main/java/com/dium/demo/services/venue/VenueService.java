@@ -1,4 +1,4 @@
-package com.dium.demo.services;
+package com.dium.demo.services.venue;
 
 import com.dium.demo.dto.requests.VenueRequest;
 import com.dium.demo.dto.responses.VenueResponse;
@@ -9,6 +9,8 @@ import com.dium.demo.mappers.VenueMapper;
 import com.dium.demo.models.User;
 import com.dium.demo.models.Venue;
 import com.dium.demo.repositories.VenueRepository;
+import com.dium.demo.services.FileService;
+import com.dium.demo.services.auth.CustomUserDetailsService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -31,6 +33,7 @@ public class VenueService {
     public List<VenueResponse> getAllVenues() {
         return venueMapper.toResponseList(venueRepository.findAll());
     }
+
     @Transactional(readOnly = true)
     public VenueResponse getVenueById(Long venueId) {
         return venueMapper.toResponse(venueRepository.findByIdOrThrow(venueId));

@@ -1,6 +1,6 @@
 package com.dium.demo.security;
 
-import com.dium.demo.services.JwtService;
+import com.dium.demo.services.auth.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

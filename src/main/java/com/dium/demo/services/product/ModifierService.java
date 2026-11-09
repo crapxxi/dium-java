@@ -1,4 +1,4 @@
-package com.dium.demo.services;
+package com.dium.demo.services.product;
 
 import com.dium.demo.dto.requests.ModifierGroupRequest;
 import com.dium.demo.dto.requests.ModifierRequest;
@@ -16,6 +16,7 @@ import com.dium.demo.models.User;
 import com.dium.demo.repositories.ModifierGroupRepository;
 import com.dium.demo.repositories.ModifierRepository;
 import com.dium.demo.repositories.ProductRepository;
+import com.dium.demo.services.auth.CustomUserDetailsService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

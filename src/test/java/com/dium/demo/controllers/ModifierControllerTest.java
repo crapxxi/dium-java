@@ -4,9 +4,9 @@ import com.dium.demo.dto.requests.ModifierGroupRequest;
 import com.dium.demo.dto.requests.ModifierRequest;
 import com.dium.demo.dto.responses.ModifierGroupResponse;
 import com.dium.demo.dto.responses.ModifierResponse;
-import com.dium.demo.services.CustomUserDetailsService;
-import com.dium.demo.services.JwtService;
-import com.dium.demo.services.ModifierService;
+import com.dium.demo.services.auth.CustomUserDetailsService;
+import com.dium.demo.services.auth.JwtService;
+import com.dium.demo.services.product.ModifierService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +17,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;

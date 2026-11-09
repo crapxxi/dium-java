@@ -17,6 +17,8 @@ import com.dium.demo.models.Venue;
 import com.dium.demo.repositories.ModifierGroupRepository;
 import com.dium.demo.repositories.ModifierRepository;
 import com.dium.demo.repositories.ProductRepository;
+import com.dium.demo.services.auth.CustomUserDetailsService;
+import com.dium.demo.services.product.ModifierService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

@@ -2,7 +2,7 @@ package com.dium.demo.controllers;
 
 import com.dium.demo.dto.requests.OrderRequest;
 import com.dium.demo.dto.responses.OrderResponse;
-import com.dium.demo.services.OrderService;
+import com.dium.demo.services.order.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

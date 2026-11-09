@@ -1,4 +1,4 @@
-package com.dium.demo.services;
+package com.dium.demo.services.order;
 
 import com.dium.demo.enums.OrderStatus;
 import com.dium.demo.models.Order;

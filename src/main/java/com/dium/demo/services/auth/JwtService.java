@@ -1,4 +1,4 @@
-package com.dium.demo.services;
+package com.dium.demo.services.auth;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;

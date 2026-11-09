@@ -11,6 +11,8 @@ import com.dium.demo.models.User;
 import com.dium.demo.models.Venue;
 import com.dium.demo.repositories.ProductRepository;
 import com.dium.demo.repositories.VenueRepository;
+import com.dium.demo.services.auth.CustomUserDetailsService;
+import com.dium.demo.services.product.ProductService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

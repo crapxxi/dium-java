@@ -2,15 +2,14 @@ package com.dium.demo.controllers;
 
 import com.dium.demo.dto.requests.VenueRequest;
 import com.dium.demo.dto.responses.VenueResponse;
-import com.dium.demo.services.CustomUserDetailsService;
-import com.dium.demo.services.JwtService;
-import com.dium.demo.services.VenueService;
+import com.dium.demo.services.auth.CustomUserDetailsService;
+import com.dium.demo.services.auth.JwtService;
+import com.dium.demo.services.venue.VenueService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;

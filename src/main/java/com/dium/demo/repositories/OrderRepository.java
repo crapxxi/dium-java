@@ -11,11 +11,9 @@ import java.util.Optional;
 
 public interface OrderRepository extends BaseRepository<Order, Long> {
     List<Order> findAllByUserIdOrderByCreatedAtDesc(Long userId);
-    List<Order> findAllByVenueIdOrderByCreatedAtDesc(Long venueId);
     List<Order> findAllByVenueIdAndStatusNotInOrderByCreatedAtDesc(
             Long venueId,
             List<OrderStatus> statusesToExclude
     );
-    Optional<Order> findByPickupCode(Integer pickupCode);
     List<Order> findAllByStatusAndCreatedAtBefore(OrderStatus status, LocalDateTime time);
 }
