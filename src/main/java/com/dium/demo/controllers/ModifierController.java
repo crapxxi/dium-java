@@ -4,6 +4,7 @@ import com.dium.demo.dto.requests.ModifierGroupRequest;
 import com.dium.demo.dto.requests.ModifierRequest;
 import com.dium.demo.dto.responses.ModifierGroupResponse;
 import com.dium.demo.dto.responses.ModifierResponse;
+import com.dium.demo.services.product.ModifierGroupService;
 import com.dium.demo.services.product.ModifierService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,12 +17,13 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/modifiers")
 public class ModifierController {
     private final ModifierService modifierService;
+    private final ModifierGroupService modifierGroupService;
 
     @PreAuthorize("hasRole('VENUE_OWNER')")
     @PutMapping("/groups/{groupId}")
     public ResponseEntity<ModifierGroupResponse> updateGroup(@PathVariable Long groupId,
                                                              @Valid @RequestBody ModifierGroupRequest request) {
-        return ResponseEntity.ok(modifierService.editModifierGroup(groupId, request));
+        return ResponseEntity.ok(modifierGroupService.editModifierGroup(groupId, request));
     }
 
     @PreAuthorize("hasRole('VENUE_OWNER')")
@@ -34,14 +36,14 @@ public class ModifierController {
     @PreAuthorize("hasRole('VENUE_OWNER')")
     @DeleteMapping("/groups/{groupId}")
     public ResponseEntity<Void> deleteModifierGroup(@PathVariable Long groupId) {
-        modifierService.deleteModifierGroup(groupId);
+        modifierGroupService.deleteModifierGroup(groupId);
         return ResponseEntity.ok().build();
     }
 
     @PreAuthorize("hasRole('VENUE_OWNER')")
     @PatchMapping("/groups/{groupId}/toggleRequired")
     public ResponseEntity<Void> toggle(@PathVariable Long groupId) {
-        modifierService.toggleRequired(groupId);
+        modifierGroupService.toggleRequired(groupId);
         return ResponseEntity.ok().build();
     }
 

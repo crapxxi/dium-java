@@ -1,4 +1,4 @@
-package com.dium.demo.services;
+package com.dium.demo.services.file;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
@@ -10,12 +10,12 @@ import java.io.IOException;
 import java.util.Map;
 
 @Service
-public class FileService {
+public class CloudinaryFileServiceImpl implements FileService {
     private final Cloudinary cloudinary;
 
-    public FileService(@Value("${cloudinary.cloud_name}") String cloudName,
-                       @Value("${cloudinary.api_key}") String apiKey,
-                       @Value("${cloudinary.api_secret}") String apiSecret) {
+    public CloudinaryFileServiceImpl(@Value("${cloudinary.cloud_name}") String cloudName,
+                                     @Value("${cloudinary.api_key}") String apiKey,
+                                     @Value("${cloudinary.api_secret}") String apiSecret) {
         this.cloudinary = new Cloudinary(ObjectUtils.asMap(
                 "cloud_name", cloudName,
                 "api_key", apiKey,
@@ -52,7 +52,7 @@ public class FileService {
         }
     }
 
-    public String extractPublicId(String fileUrl) {
+    private String extractPublicId(String fileUrl) {
         try {
             String[] parts = fileUrl.split("/");
             String fileNameWithExtension = parts[parts.length - 1];

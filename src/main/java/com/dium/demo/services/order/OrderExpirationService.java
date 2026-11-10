@@ -30,11 +30,11 @@ public class OrderExpirationService {
         );
 
         if (!expiredOrders.isEmpty()) {
-            log.info("Найдено {} просроченных заказов для отмены", expiredOrders.size());
+            log.info("Found {} expired orders for cancel", expiredOrders.size());
 
             expiredOrders.forEach(order -> {
                 order.setStatus(OrderStatus.CANCELLED);
-                order.setComment("[Авто-отмена: не подтвержден в течение 5 мин]");
+                order.setComment("[Auto-expiration: didn't confirmed in 5 minutes]");
             });
 
             orderRepository.saveAll(expiredOrders);

@@ -4,8 +4,8 @@ import com.dium.demo.dto.requests.ModifierGroupRequest;
 import com.dium.demo.dto.requests.ProductRequest;
 import com.dium.demo.dto.responses.ModifierGroupResponse;
 import com.dium.demo.dto.responses.ProductResponse;
-import com.dium.demo.services.product.ModifierService;
-import com.dium.demo.services.product.ProductService;
+import com.dium.demo.services.product.ModifierGroupService;
+import com.dium.demo.services.product.impl.ProductServiceImpl;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -21,8 +21,8 @@ import java.util.List;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/products")
 public class ProductController {
-    private final ProductService productService;
-    private final ModifierService modifierService;
+    private final ProductServiceImpl productService;
+    private final ModifierGroupService modifierGroupService;
 
     @GetMapping("/venue/{venueId}")
     public ResponseEntity<List<ProductResponse>> getByVenue(@PathVariable Long venueId) {
@@ -67,11 +67,11 @@ public class ProductController {
     @PostMapping("/{productId}/modifier-groups")
     public ResponseEntity<ModifierGroupResponse> addModifierGroup(@PathVariable Long productId,
                                                                   @Valid @RequestBody ModifierGroupRequest request) {
-        return ResponseEntity.ok(modifierService.addModifierGroup(productId, request));
+        return ResponseEntity.ok(modifierGroupService.addModifierGroup(productId, request));
     }
 
     @GetMapping(value = "/{productId}/modifier-groups")
     public ResponseEntity<List<ModifierGroupResponse>> getModifierGroups(@PathVariable Long productId) {
-        return ResponseEntity.ok(modifierService.getModifierGroups(productId));
+        return ResponseEntity.ok(modifierGroupService.getModifierGroups(productId));
     }
 }

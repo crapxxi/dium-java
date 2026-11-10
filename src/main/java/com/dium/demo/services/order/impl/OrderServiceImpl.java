@@ -1,0 +1,203 @@
+package com.dium.demo.services.order.impl;
+
+import com.dium.demo.dto.requests.OrderRequest;
+import com.dium.demo.dto.requests.OrderItemRequest;
+import com.dium.demo.dto.responses.OrderResponse;
+import com.dium.demo.enums.OrderStatus;
+import com.dium.demo.enums.UserRole;
+import com.dium.demo.exceptions.AccessDeniedException;
+import com.dium.demo.exceptions.BusinessLogicException;
+import com.dium.demo.mappers.OrderMapper;
+import com.dium.demo.models.*;
+import com.dium.demo.repositories.ModifierRepository;
+import com.dium.demo.repositories.OrderRepository;
+import com.dium.demo.repositories.ProductRepository;
+import com.dium.demo.repositories.VenueRepository;
+import com.dium.demo.services.auth.CustomUserDetailsService;
+import com.dium.demo.services.order.OrderService;
+import com.dium.demo.whatsapp.WhatsAppService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class OrderServiceImpl implements OrderService {
+    // TODO there are a lot of work to puzzle out
+    private final OrderRepository orderRepository;
+    private final ProductRepository productRepository;
+    private final VenueRepository venueRepository;
+    private final OrderMapper orderMapper;
+    private final ModifierRepository modifierRepository;
+    private final CustomUserDetailsService userDetailsService;
+    private final WhatsAppService whatsAppService;
+
+    @Transactional
+    @Override
+    public OrderResponse createOrder(OrderRequest request) {
+        User user = userDetailsService.getCurrentUser();
+        Venue venue = venueRepository.findByIdOrThrow(request.venueId());
+
+        if (!venue.getIsWorking()) {
+            throw new BusinessLogicException("Venue is not working");
+        }
+
+        Order order = new Order();
+        order.setUser(user);
+        order.setVenue(venue);
+        order.setStatus(OrderStatus.PENDING);
+        order.setComment(request.comment());
+
+        BigDecimal totalSum = BigDecimal.ZERO;
+        List<OrderItem> orderItems = new ArrayList<>();
+
+        boolean isDelivery = venue.getCanDeliver() && request.address() != null && !request.address().isBlank();
+        order.setAddress(isDelivery ? request.address() : null);
+
+        for (OrderItemRequest itemRequest : request.items()) {
+            if (itemRequest.count() == null || itemRequest.count() <= 0) {
+                throw new BusinessLogicException("Count must be greater than 0");
+            }
+
+            Product product = productRepository.findByIdOrThrow(itemRequest.productId());
+
+            if (!product.getInStock()) {
+                throw new BusinessLogicException("Product " + product.getName() + " is not in stock");
+            }
+
+            if (!product.getVenue().getId().equals(venue.getId())) {
+                throw new BusinessLogicException("Access denied: product is not from this venue");
+            }
+
+            BigDecimal itemPrice = product.getPrice();
+            List<Modifier> selectedModifiers = new ArrayList<>();
+
+            if (itemRequest.modifierIds() != null && !itemRequest.modifierIds().isEmpty()) {
+                selectedModifiers = modifierRepository.findAllById(itemRequest.modifierIds());
+                for (Modifier modifier : selectedModifiers) {
+                    if (!modifier.getModifierGroup().getProduct().getId().equals(product.getId())) {
+                        throw new BusinessLogicException("Access denied: invalid modifier for product: " + product.getName());
+                    }
+                    itemPrice = itemPrice.add(modifier.getPriceDelta());
+                }
+            }
+
+            if (itemPrice.compareTo(BigDecimal.ZERO) < 0) {
+                itemPrice = BigDecimal.ZERO;
+            }
+
+            OrderItem orderItem = new OrderItem();
+            orderItem.setOrder(order);
+            orderItem.setProduct(product);
+            orderItem.setCount(itemRequest.count());
+            orderItem.setPriceAtPurchase(itemPrice);
+            orderItem.setModifiers(selectedModifiers);
+
+            totalSum = totalSum.add(itemPrice.multiply(BigDecimal.valueOf(itemRequest.count())));
+            orderItems.add(orderItem);
+        }
+
+        if (isDelivery && venue.getDeliveryPrice() != null) {
+            BigDecimal deliveryFee = venue.getDeliveryPrice();
+            order.setDeliveryFee(deliveryFee);
+            totalSum = totalSum.add(deliveryFee);
+        } else {
+            order.setDeliveryFee(BigDecimal.ZERO);
+        }
+
+        if (totalSum.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessLogicException("Order total sum must be greater than zero");
+        }
+
+        order.setItems(orderItems);
+        order.setTotalSum(totalSum);
+
+        String finalPaymentFrom = (request.paymentFrom() != null && !request.paymentFrom().isEmpty())
+                ? request.paymentFrom()
+                : user.getPaymentFrom();
+
+        if (finalPaymentFrom == null || finalPaymentFrom.isEmpty()) {
+            throw new BusinessLogicException("Payment from is required!");
+        }
+
+        order.setPaymentFrom(finalPaymentFrom);
+
+        if (user.getPaymentFrom() == null || user.getPaymentFrom().isEmpty()) {
+            user.setPaymentFrom(finalPaymentFrom);
+        }
+
+        Order savedOrder = orderRepository.save(order);
+        savedOrder.setPickupCode(generatePickupCode(savedOrder.getId()));
+
+        return orderMapper.toResponse(savedOrder);
+    }
+
+    @Transactional
+    @Override
+    public void updateStatus(Long orderId) {
+        User user = userDetailsService.getCurrentUser();
+
+        checkVenueOwner(user);
+
+        Order order = orderRepository.findByIdOrThrow(orderId);
+
+        checkAccess(user, order);
+
+        switch (order.getStatus()) {
+            case PENDING -> {
+                order.setStatus(OrderStatus.PREPARING);
+                whatsAppService.sendMessage(order.getUser().getPhone(), String.format("Ваш заказ #%d готовится!", order.getId()));
+            }
+            case PREPARING -> order.setStatus(OrderStatus.READY);
+            case READY -> {
+                order.setStatus(OrderStatus.COMPLETED);
+                whatsAppService.sendMessage(order.getUser().getPhone(), String.format("Ваш заказ #%d готов!", order.getId()));
+            }
+            default -> throw new BusinessLogicException("Wrong status type");
+        }
+    }
+
+    @Transactional
+    @Override
+    public void cancelOrder(Long orderId) {
+        User user = userDetailsService.getCurrentUser();
+
+        checkVenueOwner(user);
+
+        Order order = orderRepository.findByIdOrThrow(orderId);
+
+        checkAccess(user, order);
+
+        if(!order.getStatus().equals(OrderStatus.PENDING))
+            throw new BusinessLogicException("Order is accepted, can't cancel");
+
+        order.setStatus(OrderStatus.CANCELLED);
+        whatsAppService.sendMessage(order.getUser().getPhone(), String.format("Ваш заказ #%d отменен", order.getId()));
+    }
+
+    private Integer generatePickupCode(Long orderId) {
+        return (int) ((orderId * 48271) % 9000 + 1000);
+    }
+    public List<OrderResponse> getOrdersByUserId() {
+        User user = userDetailsService.getCurrentUser();
+
+        return orderMapper.toResponseList(orderRepository.findAllByUserIdOrderByCreatedAtDesc(user.getId()));
+    }
+
+
+
+    private void checkVenueOwner(User user) {
+        if(!user.getRole().equals(UserRole.VENUE_OWNER))
+            throw new AccessDeniedException("Access denied: not venue owner");
+    }
+
+    private void checkAccess(User user, Order order) {
+        if(!order.getVenue().getOwner().getId().equals(user.getId()))
+            throw new AccessDeniedException("Access denied: venue doesn't own this order");
+    }
+
+}
