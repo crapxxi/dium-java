@@ -13,9 +13,9 @@ import com.dium.demo.repositories.ModifierRepository;
 import com.dium.demo.repositories.OrderRepository;
 import com.dium.demo.repositories.ProductRepository;
 import com.dium.demo.repositories.VenueRepository;
+import com.dium.demo.services.SenderService;
 import com.dium.demo.services.auth.CustomUserDetailsService;
 import com.dium.demo.services.order.OrderService;
-import com.dium.demo.whatsapp.WhatsAppService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,7 +34,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderMapper orderMapper;
     private final ModifierRepository modifierRepository;
     private final CustomUserDetailsService userDetailsService;
-    private final WhatsAppService whatsAppService;
+    private final SenderService senderService;
 
     @Transactional
     @Override
@@ -150,12 +150,12 @@ public class OrderServiceImpl implements OrderService {
         switch (order.getStatus()) {
             case PENDING -> {
                 order.setStatus(OrderStatus.PREPARING);
-                whatsAppService.sendMessage(order.getUser().getPhone(), String.format("Ваш заказ #%d готовится!", order.getId()));
+                senderService.sendMessage(order.getUser().getPhone(), String.format("Ваш заказ #%d готовится!", order.getId()));
             }
             case PREPARING -> order.setStatus(OrderStatus.READY);
             case READY -> {
                 order.setStatus(OrderStatus.COMPLETED);
-                whatsAppService.sendMessage(order.getUser().getPhone(), String.format("Ваш заказ #%d готов!", order.getId()));
+                senderService.sendMessage(order.getUser().getPhone(), String.format("Ваш заказ #%d готов!", order.getId()));
             }
             default -> throw new BusinessLogicException("Wrong status type");
         }
@@ -176,7 +176,7 @@ public class OrderServiceImpl implements OrderService {
             throw new BusinessLogicException("Order is accepted, can't cancel");
 
         order.setStatus(OrderStatus.CANCELLED);
-        whatsAppService.sendMessage(order.getUser().getPhone(), String.format("Ваш заказ #%d отменен", order.getId()));
+        senderService.sendMessage(order.getUser().getPhone(), String.format("Ваш заказ #%d отменен", order.getId()));
     }
 
     private Integer generatePickupCode(Long orderId) {

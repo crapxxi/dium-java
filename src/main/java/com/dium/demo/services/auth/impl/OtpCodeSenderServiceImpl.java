@@ -2,8 +2,8 @@ package com.dium.demo.services.auth.impl;
 
 import com.dium.demo.models.OtpCode;
 import com.dium.demo.repositories.OtpRepository;
+import com.dium.demo.services.SenderService;
 import com.dium.demo.services.auth.OtpCodeSenderService;
-import com.dium.demo.whatsapp.WhatsAppService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -11,10 +11,10 @@ import java.security.SecureRandom;
 
 @Service
 @RequiredArgsConstructor
-public class OtpCodeWhatsappSenderServiceImpl implements OtpCodeSenderService {
+public class OtpCodeSenderServiceImpl implements OtpCodeSenderService {
 
     private final OtpRepository otpRepository;
-    private final WhatsAppService whatsAppService;
+    private final SenderService senderService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Override
@@ -29,6 +29,6 @@ public class OtpCodeWhatsappSenderServiceImpl implements OtpCodeSenderService {
                 .code(code)
                 .build();
         otpRepository.save(otpCode);
-        whatsAppService.sendMessage(phone, String.format("Код подтверждения DIUM: *%s*\n⚠\uFE0F Если вы не пытались войти в систему, просто проигнорируйте это сообщение. Код истекает через 5 минут.", code));
+        senderService.sendMessage(phone, String.format("Код подтверждения DIUM: *%s*\n⚠\uFE0F Если вы не пытались войти в систему, просто проигнорируйте это сообщение. Код истекает через 5 минут.", code));
     }
 }
