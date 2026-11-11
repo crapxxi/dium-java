@@ -34,7 +34,7 @@ public class ActivationServiceImpl implements ActivationService {
         user.setIsConfirmed(true);
         userRepository.save(user);
 
-        return new AuthResponse(jwtService.generateToken(user), phone);
+        return AuthResponse.authenticated(jwtService.generateToken(user), phone);
     }
 
     @Override

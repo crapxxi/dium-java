@@ -43,6 +43,10 @@ public class SecurityConfig {
 
                         .requestMatchers("/error").permitAll()
 
+                        // 2FA: завершение входа идёт по временному токену из тела запроса (без JWT),
+                        // всё остальное управление 2FA — только для вошедшего пользователя
+                        .requestMatchers("/api/v1/auth/2fa/verify", "/api/v1/auth/2fa/verify/**").permitAll()
+                        .requestMatchers("/api/v1/auth/2fa/**").authenticated()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/files/**").permitAll()
 

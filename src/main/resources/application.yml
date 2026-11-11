@@ -54,6 +54,18 @@ otp:
   max-attempts: 5
   resend-cooldown: 60s
 
+two-factor:
+  # Обязательная 2FA для ролей ADMIN и VENUE_OWNER: при входе всегда запрашивается код
+  # (WhatsApp по умолчанию, либо TOTP, если пользователь его подключил)
+  required-for-staff: ${TWO_FACTOR_REQUIRED_FOR_STAFF:true}
+  # Base64 от 32 байт. Дефолт только для dev/test — в prod-профиле переменная обязательна.
+  encryption-key: ${TWO_FACTOR_ENCRYPTION_KEY:ZGl1bS1kZXYtb25seS0yZmEta2V5LTAwMDAwMDAwMDE=}
+  issuer: DIUM
+  pending-token-ttl: 5m
+  backup-codes-count: 10
+  max-failed-attempts: 5
+  lock-duration: 5m
+
 # Лимит на эндпоинты аутентификации: register, login, activate, resend-code,
 # forgot-password, reset-password и все /2fa/** — на каждую пару «IP + эндпоинт».
 rate-limit:

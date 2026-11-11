@@ -16,6 +16,7 @@ import com.dium.demo.services.auth.AuthService;
 import com.dium.demo.services.auth.CustomUserDetailsService;
 import com.dium.demo.services.auth.JwtService;
 import com.dium.demo.services.auth.OtpService;
+import com.dium.demo.services.auth.TwoFactorService;
 import com.dium.demo.utils.PhoneNormalizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -34,6 +35,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final OtpService otpService;
+    private final TwoFactorService twoFactorService;
 
     @Override
     public AuthResponse login(LoginRequest request) {
@@ -50,7 +52,12 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessLogicException("ACCOUNT_LOCKED:Please confirm your phone number. Code sent.");
         }
 
-        return new AuthResponse(jwtService.generateToken(user), phone);
+        if (twoFactorService.isLoginChallengeRequired(user)) {
+            // JWT не выдаём: только временный токен «2fa_pending» до проверки кода в /2fa/verify
+            return twoFactorService.startLoginChallenge(user);
+        }
+
+        return AuthResponse.authenticated(jwtService.generateToken(user), phone);
     }
 
     /**

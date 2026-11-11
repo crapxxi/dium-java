@@ -12,6 +12,9 @@ spring:
 jwt:
   secret: ${JWT_KEY}
 
+two-factor:
+  encryption-key: ${TWO_FACTOR_ENCRYPTION_KEY}
+
 whatsapp:
   api:
     url: ${WHATSAPP_API_URL}
