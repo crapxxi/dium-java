@@ -54,34 +54,14 @@ otp:
   max-attempts: 5
   resend-cooldown: 60s
 
-bucket4j:
-  enabled: true
-  filters:
-    - cache-name: buckets
-      url: /api/.*
-      strategy: first
-      http-response-body: "{ \"status\": 429, \"error\": \"Too Many Requests\", \"message\": \"Лимит запросов исчерпан. Попробуйте позже.\" }"
-      rate-limits:
-        - execute-condition: "getHttpServletRequest().getRequestURI().contains('/api/auth')"
-          cache-key: "getHeader('X-Forwarded-For') != null ? getHeader('X-Forwarded-For').split(',')[0] : getRemoteAddr()"
-          bandwidths:
-            - capacity: 5
-              time: 1
-              unit: minutes
-
-        - execute-condition: "getHttpServletRequest().getRequestURI().contains('/api/whatsapp')"
-          cache-key: "getHeader('X-Forwarded-For') != null ? getHeader('X-Forwarded-For').split(',')[0] : getRemoteAddr()"
-          bandwidths:
-            - capacity: 10
-              time: 1
-              unit: hours
-
-        - cache-key: "getHeader('X-Forwarded-For') != null ? getHeader('X-Forwarded-For').split(',')[0] : getRemoteAddr()"
-          bandwidths:
-            - capacity: 100
-              time: 1
-              unit: minutes
-
+# Лимит на эндпоинты аутентификации: register, login, activate, resend-code,
+# forgot-password, reset-password и все /2fa/** — на каждую пару «IP + эндпоинт».
+rate-limit:
+  enabled: ${RATE_LIMIT_ENABLED:true}
+  capacity: ${RATE_LIMIT_CAPACITY:10}
+  period: 1m
+  # true — брать IP из X-Forwarded-For (приложение работает за прокси)
+  trust-forwarded-header: true
 
 server:
   port: ${PORT:8080}

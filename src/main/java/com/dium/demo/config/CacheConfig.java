@@ -8,7 +8,7 @@ import org.springframework.cache.support.SimpleCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Configuration
@@ -24,13 +24,7 @@ public class CacheConfig {
                         .maximumSize(10000)
                         .build());
 
-        CaffeineCache bucketsCache = new CaffeineCache("buckets",
-                Caffeine.newBuilder()
-                        .expireAfterWrite(1, TimeUnit.HOURS)
-                        .maximumSize(5000)
-                        .build());
-
-        cacheManager.setCaches(Arrays.asList(otpCache, bucketsCache));
+        cacheManager.setCaches(List.of(otpCache));
         return cacheManager;
     }
 }
