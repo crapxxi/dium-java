@@ -1,4 +1,7 @@
 spring:
+  config:
+    # Локальный .env (см. .env.example). Переменные окружения ОС имеют приоритет.
+    import: "optional:file:.env[.properties]"
   profiles:
     active: dev
   application:
@@ -28,7 +31,8 @@ spring:
       provider: com.github.benmanes.caffeine.jcache.spi.CaffeineCachingProvider
 
 jwt:
-  secret: ${JWT_KEY:default_secret_for_dev_only_12345}
+  # Base64. Дефолт только для dev/test — в prod-профиле JWT_KEY обязателен (application-prod.yml).
+  secret: ${JWT_KEY:ZGl1bS1kZXYtb25seS1qd3Qtc2VjcmV0LWRvLW5vdC11c2UtaW4tcHJvZHVjdGlvbi0wMDAx}
 
 cloudinary:
   cloud_name: ${CLOUDINARY_CLOUD_NAME:temp}
@@ -37,10 +41,12 @@ cloudinary:
 
 whatsapp:
   api:
-    url: ${WHATSAPP_API_URL}
+    # Только хост Green API, без пути (см. apiUrl в личном кабинете)
+    url: ${WHATSAPP_API_URL:https://api.green-api.com}
     instance:
-      id: ${WHATSAPP_INSTANCE_ID}
-      token: ${WHATSAPP_API_TOKEN}
+      # Без этих значений приложение стартует, но отправка сообщений вернёт понятную ошибку
+      id: ${WHATSAPP_INSTANCE_ID:}
+      token: ${WHATSAPP_API_TOKEN:}
 
 bucket4j:
   enabled: true
