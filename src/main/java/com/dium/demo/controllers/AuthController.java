@@ -5,13 +5,13 @@ import com.dium.demo.dto.responses.AuthResponse;
 import com.dium.demo.dto.requests.LoginRequest;
 import com.dium.demo.dto.requests.RegisterRequest;
 import com.dium.demo.dto.responses.UserResponse;
-import com.dium.demo.services.AuthService;
+import com.dium.demo.services.auth.ActivationService;
+import com.dium.demo.services.auth.AuthService;
+import com.dium.demo.services.auth.PasswordResetService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -22,6 +22,8 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final ActivationService activationService;
+    private final PasswordResetService passwordResetService;
 
     @PostMapping("/register")
     public ResponseEntity<UserResponse> register(@Valid @RequestBody RegisterRequest request) {
@@ -41,30 +43,30 @@ public class AuthController {
 
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/me")
-    public ResponseEntity<UserResponse> getMe(@Valid @AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<UserResponse> getMe() {
         return ResponseEntity.ok(authService.getMe());
     }
 
     @PostMapping("/activate")
     public ResponseEntity<AuthResponse> activate(@RequestParam String phone, @RequestParam String code) {
-        return ResponseEntity.ok(authService.activateAccount(phone, code));
+        return ResponseEntity.ok(activationService.activateAccount(phone, code));
     }
 
     @PostMapping("/resend-code")
     public ResponseEntity<Void> resendCode(@RequestParam String phone) {
-        authService.resendActivationCode(phone);
+        activationService.resendActivationCode(phone);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/forgot-password")
     public ResponseEntity<Map<String, String>> forgotPassword(@RequestParam String phone) {
-        authService.requestPasswordReset(phone);
+        passwordResetService.requestPasswordReset(phone);
         return ResponseEntity.ok(Map.of("message", "SMS с кодом отправлено"));
     }
 
     @PostMapping("/reset-password")
     public ResponseEntity<Map<String, String>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
-        authService.resetPassword(request);
+        passwordResetService.resetPassword(request);
         return ResponseEntity.ok(Map.of("message", "Пароль успешно изменен"));
     }
 }

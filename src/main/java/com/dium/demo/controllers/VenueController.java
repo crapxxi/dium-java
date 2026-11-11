@@ -2,7 +2,7 @@ package com.dium.demo.controllers;
 
 import com.dium.demo.dto.requests.VenueRequest;
 import com.dium.demo.dto.responses.VenueResponse;
-import com.dium.demo.services.VenueService;
+import com.dium.demo.services.venue.VenueServiceImpl;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -18,7 +18,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/venues")
 public class VenueController {
-    private final VenueService venueService;
+    private final VenueServiceImpl venueService;
 
     @GetMapping
     public ResponseEntity<List<VenueResponse>> getAll() {

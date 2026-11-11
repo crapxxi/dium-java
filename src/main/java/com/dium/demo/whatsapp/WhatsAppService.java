@@ -1,5 +1,6 @@
 package com.dium.demo.whatsapp;
 
+import com.dium.demo.services.SenderService;
 import com.dium.demo.whatsapp.dto.SendSmsRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,7 +11,7 @@ import org.springframework.web.client.RestClient;
 @RequiredArgsConstructor
 @Slf4j
 @Service
-public class WhatsAppService {
+public class WhatsAppService implements SenderService {
     @Value("${whatsapp.api.instance.id}")
     private String instanceId;
 
@@ -19,6 +20,7 @@ public class WhatsAppService {
 
     private final RestClient restClient;
 
+    @Override
     public void sendMessage(String phone, String message) {
         String processedPhone = phone.replaceAll("\\D", "");
         if (processedPhone.startsWith("8") && processedPhone.length() == 11) {
