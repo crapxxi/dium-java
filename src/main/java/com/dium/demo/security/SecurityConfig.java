@@ -43,6 +43,9 @@ public class SecurityConfig {
 
                         .requestMatchers("/error").permitAll()
 
+                        // Swagger UI / OpenAPI. В prod-профиле документация выключена (SWAGGER_ENABLED)
+                        .requestMatchers("/v3/api-docs", "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll()
+
                         // 2FA: завершение входа идёт по временному токену из тела запроса (без JWT),
                         // всё остальное управление 2FA — только для вошедшего пользователя
                         .requestMatchers("/api/v1/auth/2fa/verify", "/api/v1/auth/2fa/verify/**").permitAll()
