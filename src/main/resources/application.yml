@@ -48,6 +48,12 @@ whatsapp:
       id: ${WHATSAPP_INSTANCE_ID:}
       token: ${WHATSAPP_API_TOKEN:}
 
+otp:
+  length: 6
+  ttl: 5m
+  max-attempts: 5
+  resend-cooldown: 60s
+
 bucket4j:
   enabled: true
   filters:

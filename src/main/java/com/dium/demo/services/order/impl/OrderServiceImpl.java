@@ -150,12 +150,12 @@ public class OrderServiceImpl implements OrderService {
         switch (order.getStatus()) {
             case PENDING -> {
                 order.setStatus(OrderStatus.PREPARING);
-                senderService.sendMessage(order.getUser().getPhone(), String.format("Ваш заказ #%d готовится!", order.getId()));
+                senderService.trySendMessage(order.getUser().getPhone(), String.format("Ваш заказ #%d готовится!", order.getId()));
             }
             case PREPARING -> order.setStatus(OrderStatus.READY);
             case READY -> {
                 order.setStatus(OrderStatus.COMPLETED);
-                senderService.sendMessage(order.getUser().getPhone(), String.format("Ваш заказ #%d готов!", order.getId()));
+                senderService.trySendMessage(order.getUser().getPhone(), String.format("Ваш заказ #%d готов!", order.getId()));
             }
             default -> throw new BusinessLogicException("Wrong status type");
         }
@@ -176,7 +176,7 @@ public class OrderServiceImpl implements OrderService {
             throw new BusinessLogicException("Order is accepted, can't cancel");
 
         order.setStatus(OrderStatus.CANCELLED);
-        senderService.sendMessage(order.getUser().getPhone(), String.format("Ваш заказ #%d отменен", order.getId()));
+        senderService.trySendMessage(order.getUser().getPhone(), String.format("Ваш заказ #%d отменен", order.getId()));
     }
 
     private Integer generatePickupCode(Long orderId) {

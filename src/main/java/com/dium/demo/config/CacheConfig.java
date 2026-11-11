@@ -20,7 +20,7 @@ public class CacheConfig {
 
         CaffeineCache otpCache = new CaffeineCache("otpCodes",
                 Caffeine.newBuilder()
-                        .expireAfterWrite(5, TimeUnit.MINUTES)
+                        .expireAfterWrite(15, TimeUnit.MINUTES) // с запасом: точный срок жизни кода проверяет OtpService
                         .maximumSize(10000)
                         .build());
 
