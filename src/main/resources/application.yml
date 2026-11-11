@@ -7,6 +7,21 @@ spring:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
+  jpa:
+    hibernate:
+      # Схемой управляет только Flyway; Hibernate лишь сверяет сущности с БД
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    # Не "усыновлять" непустую схему без истории миграций — падаем явно
+    baseline-on-migrate: false
+    validate-on-migrate: true
+    clean-disabled: true
+    placeholders:
+      "[admin_phone]": ${DIUM_ADMIN_PHONE:}
+      "[admin_name]": ${DIUM_ADMIN_NAME:}
+      "[admin_password_hash]": ${DIUM_ADMIN_PASSWORD_HASH:}
   cache:
     type: jcache
     jcache:
