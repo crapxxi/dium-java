@@ -10,12 +10,24 @@ spring:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
+  datasource:
+    hikari:
+      # Все таблицы приложения живут в отдельной схеме "dium".
+      # В "public" остаются старые таблицы, созданные Hibernate до Flyway
+      # (их данные переносит миграция V5).
+      schema: dium
   jpa:
     hibernate:
       # Схемой управляет только Flyway; Hibernate лишь сверяет сущности с БД
       ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: dium
   flyway:
     enabled: true
+    schemas: dium
+    default-schema: dium
+    create-schemas: true
     locations: classpath:db/migration
     # Не "усыновлять" непустую схему без истории миграций — падаем явно
     baseline-on-migrate: false
