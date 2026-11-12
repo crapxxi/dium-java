@@ -9,7 +9,7 @@ import org.mapstruct.MappingTarget;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring")
+@Mapper(config = EntityMapperConfig.class)
 public interface VenueMapper {
     VenueResponse toResponse(Venue venue);
     List<VenueResponse> toResponseList(List<Venue> venues);

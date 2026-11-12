@@ -1,6 +1,9 @@
 package com.dium.demo.models;
 
 import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -10,7 +13,9 @@ import java.util.List;
 @Entity
 @Table(name = "venues")
 @Data
+@Builder
 @NoArgsConstructor
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class Venue {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,6 +30,7 @@ public class Venue {
     private Boolean canDeliver;
     private BigDecimal deliveryPrice;
     private String kaspiUrl;
+    @Builder.Default
     private Boolean isWorking = true;
 
     @OneToMany(mappedBy = "venue", cascade = CascadeType.ALL)

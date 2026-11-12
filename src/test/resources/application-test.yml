@@ -1,14 +1,13 @@
-# Профиль для тестов: H2 в памяти, WhatsApp замокан, лимит запросов выключен
+# Профиль для тестов: встроенный PostgreSQL (адрес подставляет AbstractIntegrationTest),
+# схема создаётся Flyway-миграциями, как в проде; WhatsApp замокан, лимит запросов выключен
 spring:
   datasource:
-    url: jdbc:h2:mem:diumtest;DB_CLOSE_DELAY=-1
-    driver-class-name: org.h2.Driver
-    username: sa
+    driver-class-name: org.postgresql.Driver
     password:
   jpa:
-    hibernate:
-      ddl-auto: create-drop
     show-sql: false
+  flyway:
+    locations: classpath:db/migration
 
 whatsapp:
   api:

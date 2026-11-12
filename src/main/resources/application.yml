@@ -48,6 +48,16 @@ whatsapp:
       id: ${WHATSAPP_INSTANCE_ID:}
       token: ${WHATSAPP_API_TOKEN:}
 
+# Тексты уведомлений в WhatsApp. Плейсхолдеры: {orderId}, {paymentFrom}, {totalSum}, {comment}.
+notifications:
+  # Владельцу заведения — о новом заказе
+  new-order: "Новый заказ #{orderId}\nОплата от:{paymentFrom}, Сумма оплаты:{totalSum}\nКомментарии:{comment}"
+  # Клиенту — при переходе заказа в статус. Статус без шаблона уведомления не вызывает.
+  order-status:
+    PREPARING: "Ваш заказ #{orderId} готовится!"
+    COMPLETED: "Ваш заказ #{orderId} готов!"
+    CANCELLED: "Ваш заказ #{orderId} отменен"
+
 otp:
   length: 6
   ttl: 5m

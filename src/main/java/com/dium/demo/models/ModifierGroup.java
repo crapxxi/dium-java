@@ -1,7 +1,11 @@
 package com.dium.demo.models;
 
 import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,6 +13,9 @@ import java.util.List;
 @Entity
 @Table(name = "modifier_groups")
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class ModifierGroup {
     @Id
     @GeneratedValue(strategy=GenerationType.IDENTITY)
@@ -17,6 +24,7 @@ public class ModifierGroup {
     private String name;
 
     @Column(name = "is_required", nullable = false)
+    @Builder.Default
     private Boolean required = false;
 
     private Integer minChoices;
@@ -24,6 +32,7 @@ public class ModifierGroup {
     private Boolean isDeleted;
 
     @OneToMany(mappedBy = "modifierGroup", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<Modifier> modifiers = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)

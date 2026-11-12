@@ -1,7 +1,7 @@
 package com.dium.demo.aspects;
 
 import com.dium.demo.dto.responses.OrderResponse;
-import com.dium.demo.services.SenderService;
+import com.dium.demo.services.order.OrderNotificationService;
 import lombok.RequiredArgsConstructor;
 import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.Aspect;
@@ -14,17 +14,13 @@ import org.springframework.stereotype.Component;
 @EnableAsync
 @RequiredArgsConstructor
 public class MessageSenderAspect {
-    private final SenderService senderService;
+    private final OrderNotificationService notificationService;
 
     @AfterReturning(
             value = "execution(* com.dium.demo.services.order.OrderService.createOrder(..))",
             returning = "orderResponse")
     @Async
     public void sendMessageToVenueOwner(OrderResponse orderResponse) {
-        senderService.trySendMessage(
-                orderResponse.venueOwnerPhone(),
-                // TODO make the message changeable
-                String.format("Новый заказ #%d\nОплата от:%s, Сумма оплаты:%.2f\nКомментарии:%s", orderResponse.id(), orderResponse.paymentFrom(),orderResponse.totalSum(), orderResponse.comment())
-        );
+        notificationService.notifyVenueAboutNewOrder(orderResponse);
     }
 }

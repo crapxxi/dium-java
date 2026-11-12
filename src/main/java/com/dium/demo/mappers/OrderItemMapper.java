@@ -6,7 +6,7 @@ import com.dium.demo.models.OrderItem;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring")
+@Mapper(config = EntityMapperConfig.class)
 public interface OrderItemMapper {
     @Mapping(source = "product.name", target = "productName")
     OrderItemResponse toResponse(OrderItem orderItem);

@@ -14,6 +14,8 @@ import org.springframework.cache.CacheManager;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -33,7 +35,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
- * Полный контекст приложения на H2. WhatsApp заменён моком: коды «достаются» из текста сообщения,
+ * Полный контекст приложения на встроенном PostgreSQL со схемой из Flyway-миграций. WhatsApp заменён моком: коды «достаются» из текста сообщения,
  * которое приложение пыталось отправить.
  */
 @SpringBootTest
@@ -55,6 +57,12 @@ public abstract class AbstractIntegrationTest {
 
     @MockitoBean
     protected SenderService senderService;
+
+    @DynamicPropertySource
+    static void dataSource(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", EmbeddedPostgres::jdbcUrl);
+        registry.add("spring.datasource.username", EmbeddedPostgres::username);
+    }
 
     @BeforeEach
     void cleanState() {

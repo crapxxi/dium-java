@@ -4,6 +4,7 @@ import com.dium.demo.dto.requests.ResetPasswordRequest;
 import com.dium.demo.dto.responses.AuthResponse;
 import com.dium.demo.dto.requests.LoginRequest;
 import com.dium.demo.dto.requests.RegisterRequest;
+import com.dium.demo.dto.requests.VenueOwnerRequest;
 import com.dium.demo.dto.responses.UserResponse;
 import com.dium.demo.services.auth.ActivationService;
 import com.dium.demo.services.auth.AuthService;
@@ -46,11 +47,20 @@ public class AuthController {
         return ResponseEntity.ok(authService.register(request));
     }
 
-    @Operation(summary = "Регистрация владельца заведения (только ADMIN)", security = @SecurityRequirement(name = "bearerAuth"))
+    @Operation(
+            summary = "Назначить пользователя владельцем заведения (только ADMIN)",
+            description = "Пользователь с этим номером уже должен быть зарегистрирован. " +
+                    "Его роль меняется на VENUE_OWNER, имя и пароль остаются прежними.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Роль изменена"),
+                    @ApiResponse(responseCode = "404", description = "Пользователь с таким номером не найден"),
+                    @ApiResponse(responseCode = "422", description = "Пользователь уже владелец или администратор")
+            },
+            security = @SecurityRequirement(name = "bearerAuth"))
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/venue-register")
-    public ResponseEntity<UserResponse> venueRegister(@Valid @RequestBody RegisterRequest request) {
-        return ResponseEntity.ok(authService.venueRegister(request));
+    public ResponseEntity<UserResponse> assignVenueOwner(@Valid @RequestBody VenueOwnerRequest request) {
+        return ResponseEntity.ok(authService.assignVenueOwner(request));
     }
 
     @Operation(

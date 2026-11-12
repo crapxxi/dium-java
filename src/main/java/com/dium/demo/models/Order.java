@@ -2,6 +2,9 @@ package com.dium.demo.models;
 
 import com.dium.demo.enums.OrderStatus;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -12,7 +15,9 @@ import java.util.List;
 @Entity
 @Table(name="orders")
 @Data
+@Builder
 @NoArgsConstructor
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

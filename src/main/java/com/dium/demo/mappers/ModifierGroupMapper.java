@@ -10,7 +10,7 @@ import org.mapstruct.MappingTarget;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring", uses = ModifierMapper.class)
+@Mapper(config = EntityMapperConfig.class, uses = ModifierMapper.class)
 public interface ModifierGroupMapper {
     ModifierGroupResponse toResponse(ModifierGroup modifierGroup);
 
