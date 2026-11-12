@@ -21,7 +21,7 @@ public class MessageSenderAspect {
             returning = "orderResponse")
     @Async
     public void sendMessageToVenueOwner(OrderResponse orderResponse) {
-        senderService.sendMessage(
+        senderService.trySendMessage(
                 orderResponse.venueOwnerPhone(),
                 // TODO make the message changeable
                 String.format("Новый заказ #%d\nОплата от:%s, Сумма оплаты:%.2f\nКомментарии:%s", orderResponse.id(), orderResponse.paymentFrom(),orderResponse.totalSum(), orderResponse.comment())

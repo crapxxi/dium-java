@@ -14,6 +14,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
 import org.springframework.web.multipart.support.StandardServletMultipartResolver;
 
 import java.util.List;
@@ -25,6 +26,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
+    private final RateLimitFilter rateLimitFilter;
     private final AuthenticationProvider authenticationProvider;
 
     @Bean
@@ -41,6 +43,13 @@ public class SecurityConfig {
 
                         .requestMatchers("/error").permitAll()
 
+                        // Swagger UI / OpenAPI. В prod-профиле документация выключена (SWAGGER_ENABLED)
+                        .requestMatchers("/v3/api-docs", "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll()
+
+                        // 2FA: завершение входа идёт по временному токену из тела запроса (без JWT),
+                        // всё остальное управление 2FA — только для вошедшего пользователя
+                        .requestMatchers("/api/v1/auth/2fa/verify", "/api/v1/auth/2fa/verify/**").permitAll()
+                        .requestMatchers("/api/v1/auth/2fa/**").authenticated()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/files/**").permitAll()
 
@@ -56,6 +65,8 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authenticationProvider(authenticationProvider)
+                // после CorsFilter, чтобы ответ 429 тоже содержал CORS-заголовки и был читаем во фронтенде
+                .addFilterAfter(rateLimitFilter, CorsFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

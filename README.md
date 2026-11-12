@@ -10,7 +10,7 @@ REST API бэкенд для платформы DIUM: студенты офор�
 |---|---|
 | Язык / платформа | Java 17, Spring Boot 4.0.x |
 | БД | PostgreSQL + Spring Data JPA |
-| Безопасность | Spring Security, JWT (jjwt 0.11) |
+| Безопасность | Spring Security, JWT (jjwt 0.11), 2FA: WhatsApp OTP + TOTP (dev.samstevens.totp) |
 | Уведомления | WhatsApp (Green API) |
 | Хранение изображений | Cloudinary |
 | Кэш | Caffeine (in-memory JCache) |
@@ -109,14 +109,14 @@ User (CLIENT / VENUE_OWNER / ADMIN)
 
 | Сущность | Описание |
 |---|---|
-| `User` | Пользователь системы; реализует `UserDetails`; идентифицируется по номеру телефона |
+| `User` | Пользователь системы; реализует `UserDetails`; идентифицируется по номеру телефона; хранит настройки 2FA |
 | `Venue` | Заведение (кафе/буфет) в университете; у каждого заведения один `VENUE_OWNER` |
 | `Product` | Позиция меню с категорией (`ProductCategory`), ценой и флагом наличия |
 | `ModifierGroup` | Группа опций к продукту (например «Соусы», «Размер») |
 | `Modifier` | Конкретная опция с дельтой цены (`priceDelta`) |
 | `Order` | Заказ клиента; содержит список `OrderItem`, адрес доставки, статус, `pickupCode` |
 | `OrderItem` | Строка заказа: продукт × количество × цена на момент покупки + выбранные модификаторы |
-| `OtpCode` | OTP-код для подтверждения телефона/сброса пароля; хранится в Caffeine-кэше (TTL 5 мин) |
+| `OtpCode` | Одноразовый код (активация / сброс пароля / вход с 2FA); хранится в Caffeine-кэше, ключ = телефон + назначение, TTL 5 мин |
 
 ---
 
@@ -150,16 +150,68 @@ CLIENT создаёт заказ
 Все защищённые эндпоинты требуют заголовок `Authorization: Bearer <JWT>`.
 
 ```
-Регистрация → OTP в WhatsApp → Активация → JWT-токен
+Регистрация → OTP в WhatsApp → Активация → JWT
+Вход: телефон + пароль → (если включена 2FA) временный токен → код → JWT
 ```
 
-1. `POST /api/v1/auth/register` — создаёт пользователя (`isConfirmed = false`), отправляет OTP в WhatsApp
-2. `POST /api/v1/auth/activate?phone=&code=` — подтверждает телефон, возвращает JWT
-3. `POST /api/v1/auth/login` — вход по телефону/паролю, возвращает JWT
-4. `POST /api/v1/auth/forgot-password` — OTP для сброса пароля
-5. `POST /api/v1/auth/reset-password` — установить новый пароль по OTP
+### Регистрация и подтверждение телефона
 
-Аккаунт заблокирован (`isAccountNonLocked = false`) пока `isConfirmed = false`.
+1. `POST /api/v1/auth/register` — создаёт пользователя (`isConfirmed = false`) и отправляет 6-значный код в WhatsApp.
+   Если код отправить не удалось, пользователь **не создаётся**, клиент получает `502` с понятным сообщением.
+2. `POST /api/v1/auth/activate?phone=&code=` — подтверждает телефон, возвращает JWT.
+3. `POST /api/v1/auth/resend-code?phone=` — повторная отправка кода (не чаще раза в 60 секунд).
+4. `POST /api/v1/auth/forgot-password?phone=` → `POST /api/v1/auth/reset-password` — сброс пароля по коду.
+
+Аккаунт заблокирован (`isAccountNonLocked = false`), пока `isConfirmed = false`.
+
+**Номера телефонов** нормализуются на бэкенде к виду `7XXXXXXXXXX`: принимаются `+7 (707) 123-45-67`,
+`8 707 123 45 67`, `77071234567`, `7071234567`. Некорректный номер → `422`.
+
+### Одноразовые коды (OTP)
+
+| Свойство | Значение |
+|---|---|
+| Длина / срок жизни | 6 цифр / 5 минут |
+| Попытки ввода | 5, затем код аннулируется |
+| Повторная отправка | не чаще 1 раза в 60 секунд (`429` + `Retry-After`) |
+| Назначения | `ACTIVATION`, `PASSWORD_RESET`, `LOGIN_2FA` — ключ кэша = телефон + назначение, код одного назначения не подходит для другого |
+| Сравнение | за постоянное время (`MessageDigest.isEqual`) |
+
+Отправка считается успешной только при HTTP 2xx **и** наличии `idMessage` в ответе Green API.
+
+### Двухфакторная аутентификация (2FA)
+
+Способы: **WhatsApp** (одноразовый код) и **TOTP** (Google Authenticator и совместимые приложения).
+Дополнительно выдаются 10 одноразовых **резервных кодов**.
+
+Вход при включённой 2FA:
+
+1. `POST /api/v1/auth/login` — пароль верный, но JWT **не выдаётся**. Ответ:
+   ```json
+   { "token": null, "twoFactorRequired": true, "tempToken": "...", "twoFactorMethod": "TOTP",
+     "availableMethods": ["TOTP", "WHATSAPP"], "codeSent": null, "backupCodesAvailable": true }
+   ```
+   `tempToken` — JWT с пометкой `2fa_pending`, живёт 5 минут. `JwtAuthenticationFilter` отклоняет его (`401`)
+   на всех эндпоинтах, кроме `/api/v1/auth/2fa/verify`.
+2. `POST /api/v1/auth/2fa/verify` — `{ "tempToken", "code", "method": "WHATSAPP" | "TOTP" | "BACKUP_CODE" }`.
+   Только после верного кода возвращается настоящий JWT.
+
+| Метод | Путь | Доступ | Описание |
+|---|---|---|---|
+| POST | `/api/v1/auth/2fa/verify` | tempToken | Завершить вход кодом |
+| POST | `/api/v1/auth/2fa/verify/send-code` | tempToken | Отправить (повторно) WhatsApp-код для входа |
+| GET | `/api/v1/auth/2fa/status` | JWT | Включена ли 2FA, способ, обязательность, остаток резервных кодов |
+| POST | `/api/v1/auth/2fa/setup` | JWT | Начать подключение: TOTP → секрет + `otpauth://` URI + QR; WhatsApp → проверочный код |
+| POST | `/api/v1/auth/2fa/enable` | JWT | Подтвердить кодом и включить; возвращает резервные коды (один раз) |
+| POST | `/api/v1/auth/2fa/send-code` | JWT | WhatsApp-код текущему пользователю (для отключения) |
+| POST | `/api/v1/auth/2fa/disable` | JWT | Отключить: нужны пароль и код |
+| POST | `/api/v1/auth/2fa/backup-codes` | JWT | Перевыпустить 10 резервных кодов (нужен пароль) |
+
+Хранение: TOTP-секрет шифруется AES-256-GCM (ключ `TWO_FACTOR_ENCRYPTION_KEY`), резервные коды — только BCrypt-хэши.
+После 5 неверных кодов подряд проверка блокируется на 5 минут.
+
+**Обязательная 2FA для `ADMIN` и `VENUE_OWNER`** — флаг `TWO_FACTOR_REQUIRED_FOR_STAFF` (по умолчанию `true`).
+Если такой пользователь сам 2FA не настраивал, при входе код приходит в WhatsApp; подключив TOTP, он входит по коду из приложения.
 
 ---
 
@@ -175,13 +227,15 @@ CLIENT создаёт заказ
 
 ## Rate Limiting (Bucket4j + Caffeine)
 
-| Эндпоинт | Лимит |
-|---|---|
-| `/api/auth/**` | 5 запросов / минута с IP |
-| `/api/whatsapp/**` | 10 запросов / час с IP |
-| Все остальные `/api/**` | 100 запросов / минута с IP |
+`RateLimitFilter` ограничивает `POST`-запросы на каждую пару «IP + эндпоинт»:
 
-При превышении: `HTTP 429 Too Many Requests`.
+| Эндпоинты | Лимит |
+|---|---|
+| `/api/v1/auth/register`, `/login`, `/activate`, `/resend-code`, `/forgot-password`, `/reset-password` | 10 запросов / минута |
+| `/api/v1/auth/2fa/**` | 10 запросов / минута |
+
+Лимит настраивается (`RATE_LIMIT_CAPACITY`, `RATE_LIMIT_ENABLED`). При превышении: `HTTP 429 Too Many Requests` + `Retry-After`.
+Перебор конкретного кода дополнительно ограничен самим OTP (5 попыток) и блокировкой 2FA.
 
 ---
 
@@ -192,6 +246,8 @@ CLIENT создаёт заказ
 | POST | `/api/v1/auth/register` | — | Регистрация клиента |
 | POST | `/api/v1/auth/login` | — | Вход |
 | POST | `/api/v1/auth/activate` | — | Подтверждение телефона |
+| POST | `/api/v1/auth/2fa/verify` | — | Завершение входа кодом второго фактора |
+| POST | `/api/v1/auth/2fa/setup` · `/enable` · `/disable` · `/backup-codes` | AUTH | Управление 2FA |
 | GET | `/api/v1/auth/me` | AUTH | Профиль текущего пользователя |
 | GET | `/api/v1/venues` | — | Список заведений |
 | POST | `/api/v1/venues` | ADMIN | Создать заведение |
@@ -212,14 +268,20 @@ CLIENT создаёт заказ
 
 | Переменная | Описание | Dev-дефолт |
 |---|---|---|
-| `JWT_KEY` | Секрет для подписи JWT | `default_secret_for_dev_only_12345` |
+| `JWT_KEY` | Секрет для подписи JWT (Base64, ≥ 32 байт). **В prod обязателен** | dev-ключ |
+| `WHATSAPP_API_URL` | Хост Green API без пути (`apiUrl` из личного кабинета). **В prod обязателен** | `https://api.green-api.com` |
+| `WHATSAPP_INSTANCE_ID` | ID инстанса Green API. **В prod обязателен** | — |
+| `WHATSAPP_API_TOKEN` | Токен Green API. **В prod обязателен** | — |
+| `TWO_FACTOR_ENCRYPTION_KEY` | Ключ AES-256 для TOTP-секретов: Base64 от 32 байт (`openssl rand -base64 32`). **В prod обязателен**; при смене ключа настроенные TOTP перестают работать | dev-ключ |
+| `TWO_FACTOR_REQUIRED_FOR_STAFF` | Обязательная 2FA для `ADMIN` и `VENUE_OWNER` | `true` |
+| `RATE_LIMIT_ENABLED` / `RATE_LIMIT_CAPACITY` | Лимит запросов к auth-эндпоинтам (запросов в минуту с IP) | `true` / `10` |
 | `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name | `temp` |
 | `CLOUDINARY_API_KEY` | Cloudinary API key | `12345` |
 | `CLOUDINARY_API_SECRET` | Cloudinary API secret | `secret` |
-| `WHATSAPP_API_URL` | Базовый URL Green API | — |
-| `WHATSAPP_INSTANCE_ID` | ID инстанса Green API | — |
-| `WHATSAPP_API_TOKEN` | Токен Green API | — |
+| `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | PostgreSQL (prod-профиль) | — |
 | `PORT` | Порт сервера | `8080` |
+
+Шаблон — в файле [`.env.example`](.env.example): скопируйте его в `.env`, он подхватывается автоматически и не попадает в git.
 
 ---
 
@@ -228,8 +290,8 @@ CLIENT создаёт заказ
 ### Локально (dev-профиль)
 
 ```bash
-# Настройте переменные окружения в .env или environment
-./mvnw spring-boot:run
+cp .env.example .env   # и заполните значения
+./mvnw spring-boot:run  # Windows: mvnw.cmd spring-boot:run
 ```
 
 ### Docker
@@ -238,6 +300,7 @@ CLIENT создаёт заказ
 docker build -t dium-backend .
 docker run -p 8080:8080 \
   -e JWT_KEY=... \
+  -e TWO_FACTOR_ENCRYPTION_KEY=... \
   -e WHATSAPP_API_URL=... \
   -e WHATSAPP_INSTANCE_ID=... \
   -e WHATSAPP_API_TOKEN=... \
@@ -272,7 +335,18 @@ src/main/java/com/dium/demo/
 ├── mappers/          # MapStruct-маппинг сущность ↔ DTO
 ├── models/           # JPA-сущности
 ├── repositories/     # Spring Data репозитории
-├── security/         # JWT-фильтр, SecurityConfig
+├── security/         # JWT-фильтр, SecurityConfig, RateLimitFilter, шифрование TOTP-секретов
 ├── services/         # Бизнес-логика
+├── utils/            # PhoneNormalizer
 └── whatsapp/         # Клиент WhatsApp API
 ```
+
+---
+
+## Команда
+
+| Участник | Роль | Зона ответственности |
+|---|---|---|
+| **Туругельдиев Алихан** | Co-founder & CTO | Архитектура системы, разработка и все технические интеграции платформы |
+| **Умбетов Диас** | Co-founder & CEO | Продукт, стратегия, партнёрства и развитие бизнеса |
+| **Мурат Мансур** | Разработчик, ответственный за безопасность (Developer, Security Lead) | Реализовал двухфакторную аутентификацию и отвечает за защиту входа и данных пользователей |

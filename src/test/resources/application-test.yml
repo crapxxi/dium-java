@@ -1,0 +1,24 @@
+# Профиль для тестов: H2 в памяти, WhatsApp замокан, лимит запросов выключен
+spring:
+  datasource:
+    url: jdbc:h2:mem:diumtest;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+whatsapp:
+  api:
+    url: http://localhost:9
+    instance:
+      id: test-instance
+      token: test-token
+
+two-factor:
+  required-for-staff: true
+
+rate-limit:
+  enabled: false

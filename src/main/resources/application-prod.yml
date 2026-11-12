@@ -7,3 +7,24 @@ spring:
     show-sql: false
   flyway:
     locations: classpath:db/migration
+
+# В проде секреты обязательны: без них приложение не стартует (никаких дефолтов).
+jwt:
+  secret: ${JWT_KEY}
+
+# Документация API в проде по умолчанию закрыта
+springdoc:
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:false}
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:false}
+
+two-factor:
+  encryption-key: ${TWO_FACTOR_ENCRYPTION_KEY}
+
+whatsapp:
+  api:
+    url: ${WHATSAPP_API_URL}
+    instance:
+      id: ${WHATSAPP_INSTANCE_ID}
+      token: ${WHATSAPP_API_TOKEN}

@@ -1,6 +1,7 @@
 package com.dium.demo.exceptions;
 
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -40,6 +41,22 @@ public class GlobalExceptionHandler {
                 createErrorResponse(ex, HttpStatus.UNPROCESSABLE_CONTENT.value()),
                 HttpStatus.UNPROCESSABLE_CONTENT
         );
+    }
+
+    /** Код/уведомление не удалось отправить через внешний сервис (WhatsApp). */
+    @ExceptionHandler(MessageDeliveryException.class)
+    public ResponseEntity<ErrorResponse> handleMessageDelivery(MessageDeliveryException ex) {
+        return new ResponseEntity<>(
+                createErrorResponse(ex, HttpStatus.BAD_GATEWAY.value()),
+                HttpStatus.BAD_GATEWAY
+        );
+    }
+
+    @ExceptionHandler(TooManyRequestsException.class)
+    public ResponseEntity<ErrorResponse> handleTooManyRequests(TooManyRequestsException ex) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfterSeconds()))
+                .body(createErrorResponse(ex, HttpStatus.TOO_MANY_REQUESTS.value()));
     }
 
     @ExceptionHandler(BadCredentialsException.class)

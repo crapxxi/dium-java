@@ -1,5 +1,6 @@
 package com.dium.demo.repositories.impl;
 
+import com.dium.demo.enums.OtpPurpose;
 import com.dium.demo.models.OtpCode;
 import com.dium.demo.repositories.OtpRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,16 +20,24 @@ public class CaffeineOtpRepositoryImpl implements OtpRepository {
         return cacheManager.getCache("otpCodes");
     }
 
-    public void save(OtpCode otpCode) {
-        getCache().put(otpCode.getPhone(), otpCode);
+    /** Ключ = телефон + назначение, чтобы коды разных сценариев не перезаписывали друг друга. */
+    private static String key(String phone, OtpPurpose purpose) {
+        return phone + ":" + purpose.name();
     }
 
-    public Optional<OtpCode> findById(String phone) {
-        OtpCode code = getCache().get(phone, OtpCode.class);
+    @Override
+    public void save(OtpCode otpCode) {
+        getCache().put(key(otpCode.getPhone(), otpCode.getPurpose()), otpCode);
+    }
+
+    @Override
+    public Optional<OtpCode> find(String phone, OtpPurpose purpose) {
+        OtpCode code = getCache().get(key(phone, purpose), OtpCode.class);
         return Optional.ofNullable(code);
     }
 
-    public void delete(OtpCode otpCode) {
-        getCache().evict(otpCode.getPhone());
+    @Override
+    public void delete(String phone, OtpPurpose purpose) {
+        getCache().evict(key(phone, purpose));
     }
 }

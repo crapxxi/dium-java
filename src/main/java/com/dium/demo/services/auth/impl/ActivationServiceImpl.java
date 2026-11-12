@@ -1,14 +1,14 @@
 package com.dium.demo.services.auth.impl;
 
 import com.dium.demo.dto.responses.AuthResponse;
+import com.dium.demo.enums.OtpPurpose;
 import com.dium.demo.exceptions.BusinessLogicException;
-import com.dium.demo.models.OtpCode;
 import com.dium.demo.models.User;
-import com.dium.demo.repositories.OtpRepository;
 import com.dium.demo.repositories.UserRepository;
 import com.dium.demo.services.auth.ActivationService;
 import com.dium.demo.services.auth.JwtService;
-import com.dium.demo.services.auth.OtpCodeSenderService;
+import com.dium.demo.services.auth.OtpService;
+import com.dium.demo.utils.PhoneNormalizer;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,19 +18,15 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ActivationServiceImpl implements ActivationService {
     private final UserRepository userRepository;
-    private final OtpRepository otpRepository;
     private final JwtService jwtService;
-    private final OtpCodeSenderService otpCodeSenderService;
+    private final OtpService otpService;
 
     @Transactional
     @Override
-    public AuthResponse activateAccount(String phone, String code) {
-        OtpCode cachedOtp = otpRepository.findById(phone)
-                .orElseThrow(() -> new BusinessLogicException("Код истек или не найден"));
+    public AuthResponse activateAccount(String rawPhone, String code) {
+        String phone = PhoneNormalizer.normalize(rawPhone);
 
-        if (!cachedOtp.getCode().equals(code)) {
-            throw new BusinessLogicException("Неверный код активации");
-        }
+        otpService.verifyCode(phone, OtpPurpose.ACTIVATION, code);
 
         User user = userRepository.findByPhone(phone)
                 .orElseThrow(() -> new EntityNotFoundException("Пользователь не найден"));
@@ -38,21 +34,20 @@ public class ActivationServiceImpl implements ActivationService {
         user.setIsConfirmed(true);
         userRepository.save(user);
 
-        otpRepository.delete(cachedOtp);
-
-        return new AuthResponse(jwtService.generateToken(user), phone);
+        return AuthResponse.authenticated(jwtService.generateToken(user), phone);
     }
 
-    @Transactional
     @Override
-    public void resendActivationCode(String phone) {
+    public void resendActivationCode(String rawPhone) {
+        String phone = PhoneNormalizer.normalize(rawPhone);
+
         User user = userRepository.findByPhone(phone)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Пользователь не найден"));
 
         if (user.getIsConfirmed()) {
-            throw new BusinessLogicException("Account is already confirmed");
+            throw new BusinessLogicException("Аккаунт уже подтверждён");
         }
 
-        otpCodeSenderService.sendCode(phone);
+        otpService.sendCode(phone, OtpPurpose.ACTIVATION);
     }
 }
