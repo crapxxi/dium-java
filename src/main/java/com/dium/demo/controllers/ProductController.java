@@ -5,7 +5,7 @@ import com.dium.demo.dto.requests.ProductRequest;
 import com.dium.demo.dto.responses.ModifierGroupResponse;
 import com.dium.demo.dto.responses.ProductResponse;
 import com.dium.demo.services.product.ModifierGroupService;
-import com.dium.demo.services.product.impl.ProductServiceImpl;
+import com.dium.demo.services.product.ProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -21,7 +21,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/products")
 public class ProductController {
-    private final ProductServiceImpl productService;
+    private final ProductService productService;
     private final ModifierGroupService modifierGroupService;
 
     @GetMapping("/venue/{venueId}")

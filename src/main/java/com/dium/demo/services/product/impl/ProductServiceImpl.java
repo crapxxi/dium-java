@@ -3,106 +3,77 @@ package com.dium.demo.services.product.impl;
 import com.dium.demo.dto.requests.ProductRequest;
 import com.dium.demo.dto.responses.ProductResponse;
 import com.dium.demo.enums.UserRole;
-import com.dium.demo.exceptions.AccessDeniedException;
-import com.dium.demo.exceptions.BusinessLogicException;
 import com.dium.demo.mappers.ProductMapper;
 import com.dium.demo.models.Product;
-import com.dium.demo.models.User;
-import com.dium.demo.models.Venue;
 import com.dium.demo.repositories.ProductRepository;
-import com.dium.demo.repositories.VenueRepository;
-import com.dium.demo.services.file.CloudinaryFileServiceImpl;
-import com.dium.demo.services.auth.CustomUserDetailsService;
+import com.dium.demo.security.access.CheckOwnership;
+import com.dium.demo.security.access.OwnedResource;
+import com.dium.demo.security.access.RequireRole;
+import com.dium.demo.services.file.FileService;
 import com.dium.demo.services.product.ProductService;
-import jakarta.persistence.EntityNotFoundException;
+import com.dium.demo.services.venue.CurrentVenueProvider;
+import com.dium.demo.utils.MoneyValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class ProductServiceImpl implements ProductService {
+    private static final String NEGATIVE_PRICE = "Price can't be negative";
+
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
-    private final VenueRepository venueRepository;
-    private final CloudinaryFileServiceImpl fileService;
-    private final CustomUserDetailsService userDetailsService;
+    private final FileService fileService;
+    private final CurrentVenueProvider currentVenueProvider;
 
     @Transactional(readOnly = true)
+    @Override
     public List<ProductResponse> getMenuByVenueId(Long venueId) {
-        List<Product> products = productRepository.findAllByVenueIdAndDeletedFalse(venueId);
-        return productMapper.toResponseList(products);
+        return productMapper.toResponseList(productRepository.findAllByVenueIdAndDeletedFalse(venueId));
     }
 
+    @RequireRole(UserRole.VENUE_OWNER)
     @Transactional
+    @Override
     public ProductResponse addProduct(ProductRequest request, MultipartFile image) throws IOException {
-       User user = userDetailsService.getCurrentUser();
+        MoneyValidator.requireNonNegative(request.price(), NEGATIVE_PRICE);
 
-       checkVenueOwner(user);
-
-       checkPriceForNegative(request.price());
-
-       Venue venue = venueRepository.findByOwner_Id(user.getId())
-               .orElseThrow(() -> new EntityNotFoundException("Venue not found"));
-
-       Product product = productMapper.toEntity(request);
-       product.setVenue(venue);
-        if(image != null && !image.isEmpty()) {
-            String imageUrl = fileService.saveFile(image);
-            product.setImageUrl(imageUrl);
-        }
-       product.setInStock(false);
-       product.setDeleted(false);
-       product.setHasModifiers(request.hasModifiers());
-
-       Product saved = productRepository.save(product);
-       return productMapper.toResponse(saved);
-    }
-
-    @Transactional
-    public ProductResponse updateProduct(Long productId, ProductRequest request, MultipartFile image) throws IOException {
-
-        User user = userDetailsService.getCurrentUser();
-
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new EntityNotFoundException("Product not found"));
-
-
-        checkVenueOwner(user);
-
-        checkVenueHasThisProduct(user, product);
-
-        checkPriceForNegative(request.price());
-
+        Product product = productMapper.toEntity(request);
+        product.setVenue(currentVenueProvider.getCurrentVenue());
         if (image != null && !image.isEmpty()) {
-            if (product.getImageUrl() != null && !product.getImageUrl().isBlank()) {
-                fileService.deleteFile(product.getImageUrl());
-            }
-            String newImagePath = fileService.saveFile(image);
-            product.setImageUrl(newImagePath);
+            product.setImageUrl(fileService.saveFile(image));
         }
-
-        Venue currentVenue = product.getVenue();
-        productMapper.updateProductFromRequest(request, product);
-        product.setVenue(currentVenue);
+        product.setInStock(false);
+        product.setDeleted(false);
 
         return productMapper.toResponse(productRepository.save(product));
     }
 
+    @RequireRole(UserRole.VENUE_OWNER)
+    @CheckOwnership(OwnedResource.PRODUCT)
     @Transactional
+    @Override
+    public ProductResponse updateProduct(Long productId, ProductRequest request, MultipartFile image) throws IOException {
+        MoneyValidator.requireNonNegative(request.price(), NEGATIVE_PRICE);
+
+        Product product = productRepository.findByIdOrThrow(productId);
+        product.setImageUrl(fileService.replaceFile(product.getImageUrl(), image));
+        productMapper.updateProductFromRequest(request, product);
+
+        return productMapper.toResponse(productRepository.save(product));
+    }
+
+    @RequireRole(UserRole.VENUE_OWNER)
+    @CheckOwnership(OwnedResource.PRODUCT)
+    @Transactional
+    @Override
     public void deleteProduct(Long productId) {
-        User user = userDetailsService.getCurrentUser();
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new EntityNotFoundException("Product not found"));
-
-        checkVenueOwner(user);
-
-        checkVenueHasThisProduct(user, product);
+        Product product = productRepository.findByIdOrThrow(productId);
 
         if (product.getImageUrl() != null) {
             fileService.deleteFile(product.getImageUrl());
@@ -111,39 +82,14 @@ public class ProductServiceImpl implements ProductService {
         product.setDeleted(true);
         product.setInStock(false);
         product.setImageUrl(null);
-
-        productRepository.save(product);
     }
+
+    @RequireRole(UserRole.VENUE_OWNER)
+    @CheckOwnership(OwnedResource.PRODUCT)
     @Transactional
+    @Override
     public void toggleStock(Long productId) {
-        User user = userDetailsService.getCurrentUser();
-
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new EntityNotFoundException("Product not found"));
-
-        checkVenueOwner(user);
-        checkVenueHasThisProduct(user, product);
-
-        product.setInStock(!product.getInStock());
-
-        productRepository.save(product);
+        Product product = productRepository.findByIdOrThrow(productId);
+        product.setInStock(!Boolean.TRUE.equals(product.getInStock()));
     }
-
-    // TODO replace with aspect
-    private void checkVenueOwner(User user) {
-        if (!user.getRole().equals(UserRole.VENUE_OWNER))
-            throw new AccessDeniedException("Access denied: not venue owner");
-
-    }
-
-    private void checkPriceForNegative(BigDecimal price) {
-        if(price == null || price.compareTo(BigDecimal.ZERO) < 0)
-            throw new BusinessLogicException("Price can't be negative");
-    }
-
-    private void checkVenueHasThisProduct(User user, Product product) {
-        if(!product.getVenue().getOwner().getId().equals(user.getId()))
-            throw new AccessDeniedException("Access denied: can't change product, wrong venue owner");
-    }
-
 }

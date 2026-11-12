@@ -10,7 +10,7 @@ import org.mapstruct.MappingTarget;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring",uses = {OrderItemMapper.class})
+@Mapper(config = EntityMapperConfig.class,uses = {OrderItemMapper.class})
 public interface OrderMapper {
 
     @Mapping(source = "venue.name", target = "venueName")

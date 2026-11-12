@@ -4,7 +4,11 @@ package com.dium.demo.models;
 import com.dium.demo.enums.TwoFactorMethod;
 import com.dium.demo.enums.UserRole;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.ToString;
 import org.springframework.security.core.GrantedAuthority;
@@ -17,6 +21,9 @@ import java.util.List;
 @Entity
 @Table(name = "users")
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class User implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -37,11 +44,13 @@ public class User implements UserDetails {
     private String paymentFrom;
 
     @Column(nullable = false)
+    @Builder.Default
     private Boolean isConfirmed = false;
 
     // --- Двухфакторная аутентификация ---
     // Колонки nullable, чтобы ddl-auto=update добавил их в существующую таблицу; null = «выключено».
 
+    @Builder.Default
     private Boolean twoFactorEnabled = false;
 
     @Enumerated(EnumType.STRING)

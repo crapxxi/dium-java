@@ -6,7 +6,7 @@ import com.dium.demo.models.User;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring")
+@Mapper(config = EntityMapperConfig.class)
 public interface UserMapper {
     UserResponse toResponse(User user);
 

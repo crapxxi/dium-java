@@ -9,7 +9,7 @@ import org.mapstruct.MappingTarget;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring")
+@Mapper(config = EntityMapperConfig.class)
 public interface ProductMapper {
     ProductResponse toResponse(Product product);
 

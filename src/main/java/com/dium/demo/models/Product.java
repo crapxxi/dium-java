@@ -2,6 +2,9 @@ package com.dium.demo.models;
 
 import com.dium.demo.enums.ProductCategory;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -12,7 +15,9 @@ import java.util.List;
 @Entity
 @Table(name = "products")
 @Data
+@Builder
 @NoArgsConstructor
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class Product {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -23,6 +28,7 @@ public class Product {
     private Venue venue;
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<ModifierGroup> modifierGroups = new ArrayList<>();
 
     @Column(nullable = false)

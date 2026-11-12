@@ -1,6 +1,5 @@
 package com.dium.demo.services.order.impl;
 
-import com.dium.demo.models.Order;
 import com.dium.demo.models.Venue;
 import com.dium.demo.repositories.OrderRepository;
 import com.dium.demo.services.order.PaymentService;
@@ -9,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/** Оплата переводом по Kaspi-ссылке заведения. */
 @Service
 @RequiredArgsConstructor
 public class KaspiPaymentServiceImpl implements PaymentService {
@@ -16,14 +16,13 @@ public class KaspiPaymentServiceImpl implements PaymentService {
 
     @Override
     public void pay() {
-        // PAYMENT logic cannot implement
+        // Kaspi оплачивается переводом по ссылке заведения: серверу проводить нечего
     }
 
     @Transactional(readOnly = true)
-    public String getKaspiUrl(Long orderId) {
-        Order order = orderRepository.findByIdOrThrow(orderId);
-
-        Venue venue = order.getVenue();
+    @Override
+    public String getPaymentUrl(Long orderId) {
+        Venue venue = orderRepository.findByIdOrThrow(orderId).getVenue();
 
         if (venue.getKaspiUrl() == null || venue.getKaspiUrl().isBlank()) {
             throw new EntityNotFoundException("Заведение еще не добавило ссылку Kaspi");

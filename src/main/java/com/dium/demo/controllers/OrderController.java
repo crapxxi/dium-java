@@ -4,7 +4,7 @@ import com.dium.demo.dto.requests.OrderRequest;
 import com.dium.demo.dto.responses.OrderResponse;
 import com.dium.demo.services.order.KitchenOrderService;
 import com.dium.demo.services.order.OrderService;
-import com.dium.demo.services.order.impl.KaspiPaymentServiceImpl;
+import com.dium.demo.services.order.PaymentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,8 +18,7 @@ import java.util.List;
 @RequestMapping("/api/v1/orders")
 public class OrderController {
     private final OrderService orderService;
-    // TODO if have better payment implementation
-    private final KaspiPaymentServiceImpl paymentService;
+    private final PaymentService paymentService;
     private final KitchenOrderService kitchenOrderService;
 
     @PreAuthorize("isAuthenticated()")
@@ -62,7 +61,7 @@ public class OrderController {
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/{orderId}/kaspi-url")
     public ResponseEntity<String> getKaspiUrl(@PathVariable Long orderId) {
-        return ResponseEntity.ok(paymentService.getKaspiUrl(orderId));
+        return ResponseEntity.ok(paymentService.getPaymentUrl(orderId));
     }
 
 }

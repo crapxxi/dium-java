@@ -3,6 +3,7 @@ package com.dium.demo.services.auth.impl;
 import com.dium.demo.dto.responses.AuthResponse;
 import com.dium.demo.dto.requests.LoginRequest;
 import com.dium.demo.dto.requests.RegisterRequest;
+import com.dium.demo.dto.requests.VenueOwnerRequest;
 import com.dium.demo.dto.responses.UserResponse;
 import com.dium.demo.enums.OtpPurpose;
 import com.dium.demo.enums.UserRole;
@@ -18,6 +19,7 @@ import com.dium.demo.services.auth.JwtService;
 import com.dium.demo.services.auth.OtpService;
 import com.dium.demo.services.auth.TwoFactorService;
 import com.dium.demo.utils.PhoneNormalizer;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -112,22 +114,21 @@ public class AuthServiceImpl implements AuthService {
         return userMapper.toResponse(saved);
     }
 
-    // TODO wanna change this method to the setting existing user to venue owner
     @Transactional
     @PreAuthorize("hasRole('ADMIN')")
     @Override
-    public UserResponse venueRegister(RegisterRequest request) {
+    public UserResponse assignVenueOwner(VenueOwnerRequest request) {
         String phone = PhoneNormalizer.normalize(request.phone());
-        checkHasRegistered(phone, "Venue owner has already registered!");
 
-        User user = userMapper.toEntity(request);
+        User user = userRepository.findByPhone(phone)
+                .orElseThrow(() -> new EntityNotFoundException("User with this phone is not registered"));
 
-        user.setPhone(phone);
-        user.setPassword(passwordEncoder.encode(request.password()));
+        if (user.getRole() != UserRole.CLIENT) {
+            throw new BusinessLogicException("User is already " + user.getRole());
+        }
+
         user.setRole(UserRole.VENUE_OWNER);
-
-        User saved = userRepository.save(user);
-        return userMapper.toResponse(saved);
+        return userMapper.toResponse(userRepository.save(user));
     }
 
     @Transactional(readOnly = true)
@@ -139,10 +140,5 @@ public class AuthServiceImpl implements AuthService {
             throw new AccessDeniedException("Please, logout and confirm phone!");
 
         return userMapper.toResponse(user);
-    }
-
-    private void checkHasRegistered(String phone, String message) {
-        if(userRepository.existsByPhone(phone))
-            throw new AccessDeniedException(message);
     }
 }
