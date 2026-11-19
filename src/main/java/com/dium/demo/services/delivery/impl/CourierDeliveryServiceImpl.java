@@ -121,7 +121,7 @@ public class CourierDeliveryServiceImpl implements CourierDeliveryService {
         return new DeliveryResponses.CourierSummary(
                 deliveryRepository.countByCourierIdAndStatus(courierId, DeliveryStatus.DELIVERED),
                 deliveryRepository.sumEarnedBy(courierId),
-                properties.courierFee(),
+                properties.fee(),
                 deliveryRepository.countByCourierIdAndStatusIn(courierId, DeliveryStatus.IN_PROGRESS),
                 properties.maxActivePerCourier());
     }

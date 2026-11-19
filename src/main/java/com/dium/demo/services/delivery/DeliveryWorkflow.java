@@ -34,7 +34,7 @@ public class DeliveryWorkflow {
                 .orElseGet(() -> deliveryRepository.save(Delivery.builder()
                         .order(order)
                         .status(DeliveryStatus.SEARCHING_COURIER)
-                        .courierFee(properties.courierFee())
+                        .courierFee(properties.fee())
                         .deliveryCode(codes.newSealedCode())
                         .createdAt(now())
                         .build()));

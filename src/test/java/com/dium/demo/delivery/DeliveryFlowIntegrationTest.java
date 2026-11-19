@@ -12,6 +12,7 @@ import com.dium.demo.enums.DeliveryIssueStatus;
 import com.dium.demo.enums.DeliveryIssueType;
 import com.dium.demo.enums.DeliveryParticipant;
 import com.dium.demo.enums.DeliveryStatus;
+import com.dium.demo.enums.FulfillmentType;
 import com.dium.demo.enums.OrderStatus;
 import com.dium.demo.enums.ProductCategory;
 import com.dium.demo.enums.UserRole;
@@ -236,6 +237,20 @@ class DeliveryFlowIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(statusHistory(offer.id()))
                 .containsExactly("SEARCHING_COURIER", "ASSIGNED", "PICKED_UP", "DELIVERED");
+    }
+
+    @Test
+    void pickupChosenByCustomerNeverReachesCouriersEvenWithAddress() {
+        Long pickupOrder = placeOrder(customer, "Dorm 5, room 12", FulfillmentType.PICKUP);
+        Long deliveryOrder = placeOrder(customer, "Dorm 5, room 12", FulfillmentType.DELIVERY);
+        acceptByVenue(pickupOrder);
+        acceptByVenue(deliveryOrder);
+
+        assertThat(deliveryRepository.findByOrderId(pickupOrder)).isEmpty();
+        authenticate(courier);
+        assertThat(courierService.getAvailable())
+                .extracting(DeliveryResponses.Available::orderId)
+                .containsExactly(deliveryOrder);
     }
 
     @Test
@@ -544,6 +559,10 @@ class DeliveryFlowIntegrationTest extends AbstractIntegrationTest {
     }
 
     private Long placeOrder(User who, String address) {
+        return placeOrder(who, address, address == null ? FulfillmentType.PICKUP : FulfillmentType.DELIVERY);
+    }
+
+    private Long placeOrder(User who, String address, FulfillmentType fulfillment) {
         authenticate(who);
         return orderService.createOrder(new OrderRequest(
                 venue.id(),
@@ -551,7 +570,8 @@ class DeliveryFlowIntegrationTest extends AbstractIntegrationTest {
                 address,
                 "Позвонить у входа",
                 null,
-                "Aidar A.")).id();
+                "Aidar A.",
+                fulfillment)).id();
     }
 
     /** Заведение принимает заказ — доставка появляется в ленте. */
