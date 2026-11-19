@@ -71,7 +71,9 @@ public class OtpServiceImpl implements OtpService {
             throw new BusinessLogicException(EXPIRED_MESSAGE);
         }
 
-        int attempt = stored.getAttempts().incrementAndGet();
+        // Счётчик увеличивается в хранилище (в Redis — атомарно), а не в прочитанной копии
+        int attempt = otpRepository.incrementAttempts(phone, purpose)
+                .orElseThrow(() -> new BusinessLogicException(EXPIRED_MESSAGE));
         if (attempt > properties.maxAttempts()) {
             otpRepository.delete(phone, purpose);
             throw new BusinessLogicException("Превышено число попыток. Запросите новый код.");
