@@ -19,5 +19,10 @@ whatsapp:
 two-factor:
   required-for-staff: true
 
+# Без Redis: интеграционные тесты работают на Caffeine (Redis-слой покрыт отдельными тестами)
+otp:
+  storage:
+    redis-enabled: false
+
 rate-limit:
   enabled: false

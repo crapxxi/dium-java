@@ -9,7 +9,12 @@ import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
+import java.util.OptionalInt;
 
+/**
+ * OTP-коды в памяти процесса. Если Redis включён ({@code otp.storage.redis-enabled}), это запасное хранилище
+ * для {@link ResilientOtpRepository}; если выключен — единственное.
+ */
 @Component
 @RequiredArgsConstructor
 public class CaffeineOtpRepositoryImpl implements OtpRepository {
@@ -39,5 +44,13 @@ public class CaffeineOtpRepositoryImpl implements OtpRepository {
     @Override
     public void delete(String phone, OtpPurpose purpose) {
         getCache().evict(key(phone, purpose));
+    }
+
+    /** В памяти хранится сам объект, поэтому достаточно увеличить его AtomicInteger. */
+    @Override
+    public OptionalInt incrementAttempts(String phone, OtpPurpose purpose) {
+        return find(phone, purpose)
+                .map(code -> OptionalInt.of(code.getAttempts().incrementAndGet()))
+                .orElseGet(OptionalInt::empty);
     }
 }

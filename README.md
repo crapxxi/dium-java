@@ -14,6 +14,7 @@ REST API бэкенд для платформы DIUM: студенты офор�
 | Уведомления | WhatsApp (Green API) |
 | Хранение изображений | Cloudinary |
 | Кэш | Caffeine (in-memory JCache) |
+| Хранилище OTP | Redis (основное) + Caffeine (запасное), circuit breaker — Resilience4j |
 | Rate limiting | Bucket4j |
 | Маппинг DTO | MapStruct |
 | Документация API | SpringDoc OpenAPI (Swagger UI) |
@@ -116,7 +117,7 @@ User (CLIENT / VENUE_OWNER / ADMIN)
 | `Modifier` | Конкретная опция с дельтой цены (`priceDelta`) |
 | `Order` | Заказ клиента; содержит список `OrderItem`, адрес доставки, статус, `pickupCode` |
 | `OrderItem` | Строка заказа: продукт × количество × цена на момент покупки + выбранные модификаторы |
-| `OtpCode` | Одноразовый код (активация / сброс пароля / вход с 2FA); хранится в Caffeine-кэше, ключ = телефон + назначение, TTL 5 мин |
+| `OtpCode` | Одноразовый код (активация / сброс пароля / вход с 2FA); хранится в Redis (при его недоступности — в Caffeine), ключ = телефон + назначение, TTL 5 мин |
 
 ---
 
@@ -178,6 +179,27 @@ CLIENT создаёт заказ
 | Сравнение | за постоянное время (`MessageDigest.isEqual`) |
 
 Отправка считается успешной только при HTTP 2xx **и** наличии `idMessage` в ответе Green API.
+
+#### Хранилище кодов: Redis + Caffeine
+
+Коды хранятся в Redis (hash `dium:otp:<телефон>:<назначение>` с TTL = сроку жизни кода; запись и счётчик попыток
+меняются атомарно Lua-скриптами), поэтому они общие для всех экземпляров приложения и переживают перезапуск.
+
+Каждое обращение к Redis идёт через circuit breaker (Resilience4j, `ResilientOtpRepository`):
+
+| Состояние | Что происходит |
+|---|---|
+| `CLOSED` | Коды читаются и пишутся в Redis. Отдельный упавший запрос сразу выполняется в Caffeine |
+| `OPEN` | Из последних 20 обращений упало ≥ 50% — 30 секунд к Redis не обращаемся вовсе, коды живут в Caffeine (запросы не ждут таймаутов) |
+| `HALF_OPEN` | 3 пробных запроса к Redis: успешны — возврат в `CLOSED`, нет — снова `OPEN` |
+
+При переключениях коды не теряются и не используются повторно: если кода нет в Redis, он ищется в Caffeine
+(коды, выданные во время сбоя, продолжают работать); код, который не удалось удалить из Redis после использования,
+игнорируется, пока не будет удалён. Код, выданный в Redis до сбоя, во время сбоя недоступен — пользователь
+запрашивает новый. Во время сбоя коды видны только тому экземпляру приложения, который их выдал.
+
+Пороги настраиваются в `otp.storage.circuit-breaker.*`, подключение — `spring.data.redis.*` (таймауты 500 мс).
+`OTP_REDIS_ENABLED=false` отключает Redis полностью (только Caffeine, как раньше).
 
 ### Двухфакторная аутентификация (2FA)
 
@@ -274,6 +296,8 @@ CLIENT создаёт заказ
 | `WHATSAPP_API_TOKEN` | Токен Green API. **В prod обязателен** | — |
 | `TWO_FACTOR_ENCRYPTION_KEY` | Ключ AES-256 для TOTP-секретов: Base64 от 32 байт (`openssl rand -base64 32`). **В prod обязателен**; при смене ключа настроенные TOTP перестают работать | dev-ключ |
 | `TWO_FACTOR_REQUIRED_FOR_STAFF` | Обязательная 2FA для `ADMIN` и `VENUE_OWNER` | `true` |
+| `OTP_REDIS_ENABLED` | Хранить OTP-коды в Redis (при сбое — Caffeine); `false` — только Caffeine | `true` |
+| `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` / `REDIS_SSL` | Подключение к Redis | `localhost` / `6379` / — / `false` |
 | `RATE_LIMIT_ENABLED` / `RATE_LIMIT_CAPACITY` | Лимит запросов к auth-эндпоинтам (запросов в минуту с IP) | `true` / `10` |
 | `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name | `temp` |
 | `CLOUDINARY_API_KEY` | Cloudinary API key | `12345` |
@@ -306,7 +330,7 @@ docker run -p 8080:8080 \
   -e WHATSAPP_API_TOKEN=... \
   -e CLOUDINARY_CLOUD_NAME=... \
   -e CLOUDINARY_API_KEY=... \
-  -e CLOUDINARY_API_SECRET=... \
+  -e CLOUDINARY_API_SECRET=... \n  -e REDIS_HOST=... \
   dium-backend
 ```
 
@@ -316,6 +340,14 @@ Prod-профиль активируется автоматически чере
 
 ```bash
 ./mvnw test
+```
+
+Обычный прогон обходится без Redis (коды в Caffeine; переключение Redis → Caffeine проверяется на «падающем» Redis).
+Тесты на настоящем Redis включаются переменной `REDIS_TEST_HOST`:
+
+```bash
+docker run -d --name redis -p 6379:6379 redis:7-alpine
+REDIS_TEST_HOST=localhost ./mvnw test
 ```
 
 ---

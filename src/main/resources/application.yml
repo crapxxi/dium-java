@@ -41,6 +41,16 @@ spring:
     type: jcache
     jcache:
       provider: com.github.benmanes.caffeine.jcache.spi.CaffeineCachingProvider
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      ssl:
+        enabled: ${REDIS_SSL:false}
+      # Короткие таймауты: при зависшем Redis запрос не ждёт, а быстро уходит на Caffeine
+      connect-timeout: 500ms
+      timeout: 500ms
 
 jwt:
   # Base64. Дефолт только для dev/test — в prod-профиле JWT_KEY обязателен (application-prod.yml).
@@ -75,6 +85,18 @@ otp:
   ttl: 5m
   max-attempts: 5
   resend-cooldown: 60s
+  storage:
+    # true — коды в Redis, а при его недоступности в памяти (Caffeine); false — только Caffeine
+    redis-enabled: ${OTP_REDIS_ENABLED:true}
+    key-prefix: "dium:otp:"
+    circuit-breaker:
+      # Из последних 20 обращений к Redis упало >= 50% (и обращений было хотя бы 5) —
+      # 30 секунд работаем только с Caffeine, затем 3 пробных запроса решают, вернуться ли на Redis
+      failure-rate-threshold: 50
+      sliding-window-size: 20
+      minimum-number-of-calls: 5
+      wait-duration-in-open-state: 30s
+      permitted-calls-in-half-open-state: 3
 
 two-factor:
   # Обязательная 2FA для ролей ADMIN и VENUE_OWNER: при входе всегда запрашивается код
