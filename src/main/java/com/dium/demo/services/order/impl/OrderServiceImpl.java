@@ -20,6 +20,7 @@ import com.dium.demo.services.auth.CustomUserDetailsService;
 import com.dium.demo.services.order.OrderItemFactory;
 import com.dium.demo.services.order.OrderNotificationService;
 import com.dium.demo.services.order.OrderService;
+import com.dium.demo.services.order.OrderStatusListener;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +38,8 @@ public class OrderServiceImpl implements OrderService {
     private final CustomUserDetailsService userDetailsService;
     private final OrderItemFactory orderItemFactory;
     private final OrderNotificationService notificationService;
+    /** Другие модули (например, доставка), которым важна смена статуса заказа. */
+    private final List<OrderStatusListener> statusListeners;
 
     @Transactional
     @Override
@@ -86,8 +89,7 @@ public class OrderServiceImpl implements OrderService {
         OrderStatus next = order.getStatus().next()
                 .orElseThrow(() -> new BusinessLogicException("Wrong status type"));
 
-        order.setStatus(next);
-        notificationService.notifyCustomerAboutStatus(order);
+        changeStatus(order, next);
     }
 
     @RequireRole(UserRole.VENUE_OWNER)
@@ -101,8 +103,7 @@ public class OrderServiceImpl implements OrderService {
             throw new BusinessLogicException("Order is accepted, can't cancel");
         }
 
-        order.setStatus(OrderStatus.CANCELLED);
-        notificationService.notifyCustomerAboutStatus(order);
+        changeStatus(order, OrderStatus.CANCELLED);
     }
 
     @Transactional(readOnly = true)
@@ -110,6 +111,14 @@ public class OrderServiceImpl implements OrderService {
     public List<OrderResponse> getOrdersByUserId() {
         User user = userDetailsService.getCurrentUser();
         return orderMapper.toResponseList(orderRepository.findAllByUserIdOrderByCreatedAtDesc(user.getId()));
+    }
+
+    private void changeStatus(Order order, OrderStatus next) {
+        OrderStatus previous = order.getStatus();
+        statusListeners.forEach(listener -> listener.beforeStatusChange(order, next));
+        order.setStatus(next);
+        statusListeners.forEach(listener -> listener.afterStatusChange(order, previous));
+        notificationService.notifyCustomerAboutStatus(order);
     }
 
     private boolean isDelivery(Venue venue, OrderRequest request) {

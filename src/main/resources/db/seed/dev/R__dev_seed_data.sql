@@ -7,6 +7,7 @@
 --   77000000000 — ADMIN
 --   77000000001 — VENUE_OWNER (владелец "DIUM Coffee")
 --   77000000002 — CLIENT
+--   77000000003 — CLIENT (второй студент: курьер для проверки доставки)
 --
 -- Скрипт идемпотентен: повторный запуск не создаёт дублей.
 -- =====================================================================
@@ -17,7 +18,8 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 INSERT INTO users (phone, name, password, role, is_confirmed)
 VALUES ('77000000000', 'Dev Admin', crypt('password123', gen_salt('bf', 10)), 'ADMIN', TRUE),
        ('77000000001', 'Dev Owner', crypt('password123', gen_salt('bf', 10)), 'VENUE_OWNER', TRUE),
-       ('77000000002', 'Dev Client', crypt('password123', gen_salt('bf', 10)), 'CLIENT', TRUE)
+       ('77000000002', 'Dev Client', crypt('password123', gen_salt('bf', 10)), 'CLIENT', TRUE),
+       ('77000000003', 'Dev Courier', crypt('password123', gen_salt('bf', 10)), 'CLIENT', TRUE)
 ON CONFLICT (phone) DO NOTHING;
 
 -- Заведение -----------------------------------------------------------
