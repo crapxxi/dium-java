@@ -54,7 +54,7 @@ public class OrderServiceImpl implements OrderService {
             throw new BusinessLogicException("Venue is not working");
         }
 
-        boolean delivery = isDelivery(venue, request);
+        boolean delivery = isDelivery(request);
         // Доставка стоит одинаково за весь заказ, сколько бы в нём ни было товаров
         BigDecimal deliveryFee = delivery ? deliveryProperties.fee() : BigDecimal.ZERO;
 
@@ -124,21 +124,18 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
-     * Самовывоз или доставка. Решает покупатель: при самовывозе адрес игнорируется и заказ
-     * не попадает в ленту курьеров; доставка требует адрес и заведение, которое доставляет.
+     * Самовывоз или доставка. Решает покупатель, заведение на это не влияет: доставить заказ
+     * из любого заведения может любой студент. При самовывозе адрес игнорируется и заказ
+     * не попадает в ленту курьеров; для доставки нужен адрес.
      */
-    private boolean isDelivery(Venue venue, OrderRequest request) {
-        boolean venueDelivers = Boolean.TRUE.equals(venue.getCanDeliver());
+    private boolean isDelivery(OrderRequest request) {
         boolean hasAddress = request.address() != null && !request.address().isBlank();
         if (request.fulfillment() == null) {
-            // Клиенты без поля fulfillment: как раньше, доставка — если есть адрес
-            return venueDelivers && hasAddress;
+            // Клиенты без поля fulfillment: доставка — если указан адрес
+            return hasAddress;
         }
         if (request.fulfillment() == FulfillmentType.PICKUP) {
             return false;
-        }
-        if (!venueDelivers) {
-            throw new BusinessLogicException("Это заведение не доставляет — выберите самовывоз");
         }
         if (!hasAddress) {
             throw new BusinessLogicException("Укажите адрес доставки");
