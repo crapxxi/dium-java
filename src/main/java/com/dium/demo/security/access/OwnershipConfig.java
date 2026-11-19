@@ -1,5 +1,6 @@
 package com.dium.demo.security.access;
 
+import com.dium.demo.repositories.DeliveryRepository;
 import com.dium.demo.repositories.ModifierGroupRepository;
 import com.dium.demo.repositories.ModifierRepository;
 import com.dium.demo.repositories.OrderRepository;
@@ -28,5 +29,10 @@ public class OwnershipConfig {
     @Bean
     OwnerLookup orderOwnerLookup(OrderRepository repository) {
         return OwnerLookup.of(OwnedResource.ORDER, repository);
+    }
+
+    @Bean
+    OwnerLookup deliveryOwnerLookup(DeliveryRepository repository) {
+        return OwnerLookup.of(OwnedResource.DELIVERY, repository);
     }
 }

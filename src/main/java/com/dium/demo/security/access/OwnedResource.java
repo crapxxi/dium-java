@@ -10,7 +10,8 @@ public enum OwnedResource {
     PRODUCT("Product"),
     MODIFIER_GROUP("Modifier group"),
     MODIFIER("Modifier"),
-    ORDER("Order");
+    ORDER("Order"),
+    DELIVERY("Delivery");
 
     /** Название для сообщений об ошибках. */
     private final String label;

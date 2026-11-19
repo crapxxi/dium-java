@@ -2,6 +2,7 @@ package com.dium.demo.exceptions;
 
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.HttpHeaders;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -32,6 +33,28 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(
                 createErrorResponse(ex, HttpStatus.FORBIDDEN.value()),
                 HttpStatus.FORBIDDEN
+        );
+    }
+
+    /** Действие опоздало: например, заказ уже взял другой курьер. */
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ErrorResponse> handleConflict(ConflictException ex) {
+        return new ResponseEntity<>(
+                createErrorResponse(ex, HttpStatus.CONFLICT.value()),
+                HttpStatus.CONFLICT
+        );
+    }
+
+    /** Две транзакции одновременно изменили одну запись (@Version): вторая получает 409. */
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
+        return new ResponseEntity<>(
+                new ErrorResponse(
+                        HttpStatus.CONFLICT.value(),
+                        "Данные уже изменились. Обновите страницу и попробуйте ещё раз",
+                        System.currentTimeMillis()
+                ),
+                HttpStatus.CONFLICT
         );
     }
 

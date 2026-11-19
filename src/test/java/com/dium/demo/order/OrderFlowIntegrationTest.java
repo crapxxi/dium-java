@@ -103,12 +103,21 @@ class OrderFlowIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void orderGoesFromCreationToCompletion() {
+    void deliveryOrderIncludesDeliveryFee() {
         OrderResponse order = createOrderAsClient("Dorm 5");
 
         // 2 × (1000 + 200) + доставка 500
         assertThat(order.totalSum()).isEqualByComparingTo("2900");
         assertThat(order.deliveryFee()).isEqualByComparingTo("500");
+        assertThat(order.address()).isEqualTo("Dorm 5");
+    }
+
+    /** Самовывоз: заведение само ведёт заказ до выдачи (заказ с адресом завершает курьер, см. DeliveryFlowIntegrationTest). */
+    @Test
+    void orderGoesFromCreationToCompletion() {
+        OrderResponse order = createOrderAsClient(null);
+
+        assertThat(order.totalSum()).isEqualByComparingTo("2400");
         assertThat(order.status()).isEqualTo(OrderStatus.PENDING);
         assertThat(order.pickupCode()).isBetween(1000, 9999);
         assertThat(order.venueOwnerPhone()).isEqualTo(OWNER_PHONE);
