@@ -8,7 +8,8 @@ import java.math.BigDecimal;
 /**
  * Настройки доставки ({@code delivery.*} в application.yml).
  *
- * @param courierFee          сколько получает курьер за один доставленный заказ, ₸
+ * @param fee                 цена доставки за заказ целиком, ₸: столько платит клиент и столько же получает
+ *                            курьер. Не зависит ни от количества товаров, ни от заведения
  * @param codeLength          длина кодов передачи (код курьера и код клиента)
  * @param maxCodeAttempts     сколько неверных вводов кода допускается, потом код блокируется
  *                            и создаётся проблема для администратора
@@ -17,15 +18,15 @@ import java.math.BigDecimal;
  */
 @ConfigurationProperties(prefix = "delivery")
 public record DeliveryProperties(
-        @DefaultValue("100") BigDecimal courierFee,
+        @DefaultValue("100") BigDecimal fee,
         @DefaultValue("4") int codeLength,
         @DefaultValue("5") int maxCodeAttempts,
         @DefaultValue("2") int maxActivePerCourier,
         @DefaultValue Messages messages
 ) {
     public DeliveryProperties {
-        if (courierFee == null || courierFee.signum() < 0) {
-            throw new IllegalArgumentException("delivery.courier-fee must be >= 0");
+        if (fee == null || fee.signum() < 0) {
+            throw new IllegalArgumentException("delivery.fee must be >= 0");
         }
         if (codeLength < 4 || codeLength > 8) {
             throw new IllegalArgumentException("delivery.code-length must be between 4 and 8");

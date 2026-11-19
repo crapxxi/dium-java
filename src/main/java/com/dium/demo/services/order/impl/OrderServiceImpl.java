@@ -1,8 +1,10 @@
 package com.dium.demo.services.order.impl;
 
+import com.dium.demo.config.DeliveryProperties;
 import com.dium.demo.dto.requests.OrderItemRequest;
 import com.dium.demo.dto.requests.OrderRequest;
 import com.dium.demo.dto.responses.OrderResponse;
+import com.dium.demo.enums.FulfillmentType;
 import com.dium.demo.enums.OrderStatus;
 import com.dium.demo.enums.UserRole;
 import com.dium.demo.exceptions.BusinessLogicException;
@@ -40,6 +42,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderNotificationService notificationService;
     /** Другие модули (например, доставка), которым важна смена статуса заказа. */
     private final List<OrderStatusListener> statusListeners;
+    private final DeliveryProperties deliveryProperties;
 
     @Transactional
     @Override
@@ -52,9 +55,8 @@ public class OrderServiceImpl implements OrderService {
         }
 
         boolean delivery = isDelivery(venue, request);
-        BigDecimal deliveryFee = delivery && venue.getDeliveryPrice() != null
-                ? venue.getDeliveryPrice()
-                : BigDecimal.ZERO;
+        // Доставка стоит одинаково за весь заказ, сколько бы в нём ни было товаров
+        BigDecimal deliveryFee = delivery ? deliveryProperties.fee() : BigDecimal.ZERO;
 
         Order order = Order.builder()
                 .user(user)
@@ -121,10 +123,27 @@ public class OrderServiceImpl implements OrderService {
         notificationService.notifyCustomerAboutStatus(order);
     }
 
+    /**
+     * Самовывоз или доставка. Решает покупатель: при самовывозе адрес игнорируется и заказ
+     * не попадает в ленту курьеров; доставка требует адрес и заведение, которое доставляет.
+     */
     private boolean isDelivery(Venue venue, OrderRequest request) {
-        return Boolean.TRUE.equals(venue.getCanDeliver())
-                && request.address() != null
-                && !request.address().isBlank();
+        boolean venueDelivers = Boolean.TRUE.equals(venue.getCanDeliver());
+        boolean hasAddress = request.address() != null && !request.address().isBlank();
+        if (request.fulfillment() == null) {
+            // Клиенты без поля fulfillment: как раньше, доставка — если есть адрес
+            return venueDelivers && hasAddress;
+        }
+        if (request.fulfillment() == FulfillmentType.PICKUP) {
+            return false;
+        }
+        if (!venueDelivers) {
+            throw new BusinessLogicException("Это заведение не доставляет — выберите самовывоз");
+        }
+        if (!hasAddress) {
+            throw new BusinessLogicException("Укажите адрес доставки");
+        }
+        return true;
     }
 
     /** Плательщик из заказа, а если не указан — сохранённый у пользователя. Первый указанный запоминается. */

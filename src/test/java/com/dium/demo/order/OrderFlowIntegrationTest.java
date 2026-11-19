@@ -10,6 +10,7 @@ import com.dium.demo.dto.responses.ModifierGroupResponse;
 import com.dium.demo.dto.responses.OrderResponse;
 import com.dium.demo.dto.responses.ProductResponse;
 import com.dium.demo.dto.responses.VenueResponse;
+import com.dium.demo.enums.FulfillmentType;
 import com.dium.demo.enums.OrderStatus;
 import com.dium.demo.enums.ProductCategory;
 import com.dium.demo.enums.UserRole;
@@ -103,13 +104,28 @@ class OrderFlowIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void deliveryOrderIncludesDeliveryFee() {
-        OrderResponse order = createOrderAsClient("Dorm 5");
+    void deliveryCostsTheSameForTheWholeOrder() {
+        // Заведение указало 500, но доставка стоит единые 100 ₸ (delivery.fee)
+        OrderResponse twoItems = createOrderAsClient("Dorm 5");
+        // 2 × (1000 + 200) + доставка 100
+        assertThat(twoItems.totalSum()).isEqualByComparingTo("2500");
+        assertThat(twoItems.deliveryFee()).isEqualByComparingTo("100");
+        assertThat(twoItems.address()).isEqualTo("Dorm 5");
 
-        // 2 × (1000 + 200) + доставка 500
-        assertThat(order.totalSum()).isEqualByComparingTo("2900");
-        assertThat(order.deliveryFee()).isEqualByComparingTo("500");
-        assertThat(order.address()).isEqualTo("Dorm 5");
+        authenticate(client);
+        OrderResponse tenItems = orderService.createOrder(new OrderRequest(
+                venue.id(),
+                List.of(new OrderItemRequest(product.id(), 10, List.of())),
+                "Dorm 5",
+                null,
+                null,
+                "Aidar A.",
+                FulfillmentType.DELIVERY));
+        assertThat(tenItems.deliveryFee()).as("цена доставки не зависит от количества").isEqualByComparingTo("100");
+        assertThat(tenItems.totalSum()).isEqualByComparingTo("10100");
+
+        // Покупатель видит в заведении ту же единую цену
+        assertThat(venueService.getVenueById(venue.id()).deliveryPrice()).isEqualByComparingTo("100");
     }
 
     /** Самовывоз: заведение само ведёт заказ до выдачи (заказ с адресом завершает курьер, см. DeliveryFlowIntegrationTest). */
@@ -147,6 +163,34 @@ class OrderFlowIntegrationTest extends AbstractIntegrationTest {
 
         authenticate(client);
         assertThat(orderService.getOrdersByUserId()).hasSize(1);
+    }
+
+    @Test
+    void customerChoosesPickupOrDeliveryExplicitly() {
+        // Самовывоз: введённый адрес игнорируется, доставка не оплачивается
+        OrderResponse pickup = createOrderAsClient("Dorm 5", FulfillmentType.PICKUP);
+        assertThat(pickup.address()).isNull();
+        assertThat(pickup.deliveryFee()).isEqualByComparingTo("0");
+        assertThat(pickup.totalSum()).isEqualByComparingTo("2400");
+
+        OrderResponse delivery = createOrderAsClient("Dorm 5", FulfillmentType.DELIVERY);
+        assertThat(delivery.address()).isEqualTo("Dorm 5");
+        assertThat(delivery.deliveryFee()).isEqualByComparingTo("100");
+
+        assertThatThrownBy(() -> createOrderAsClient("  ", FulfillmentType.DELIVERY))
+                .isInstanceOf(BusinessLogicException.class)
+                .hasMessageContaining("адрес");
+    }
+
+    @Test
+    void deliveryIsRejectedWhenVenueDoesNotDeliver() throws Exception {
+        authenticate(owner);
+        venueService.updateVenue(new VenueRequest("Cafe", null, "Main st. 1", null, false, BigDecimal.ZERO), null);
+
+        assertThatThrownBy(() -> createOrderAsClient("Dorm 5", FulfillmentType.DELIVERY))
+                .isInstanceOf(BusinessLogicException.class)
+                .hasMessageContaining("самовывоз");
+        assertThat(createOrderAsClient(null, FulfillmentType.PICKUP).status()).isEqualTo(OrderStatus.PENDING);
     }
 
     @Test
@@ -260,7 +304,22 @@ class OrderFlowIntegrationTest extends AbstractIntegrationTest {
                 address,
                 "No onions",
                 null,
-                "Aidar A."));
+                "Aidar A.",
+                null));
+    }
+
+    private OrderResponse createOrderAsClient(String address, FulfillmentType fulfillment) {
+        Long modifierId = modifierGroup.modifiers().get(0).id();
+
+        authenticate(client);
+        return orderService.createOrder(new OrderRequest(
+                venue.id(),
+                List.of(new OrderItemRequest(product.id(), 2, List.of(modifierId))),
+                address,
+                null,
+                null,
+                "Aidar A.",
+                fulfillment));
     }
 
     private OrderStatus statusOf(OrderResponse order) {

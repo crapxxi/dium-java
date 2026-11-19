@@ -1,5 +1,6 @@
 package com.dium.demo.dto.requests;
 
+import com.dium.demo.enums.FulfillmentType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -20,5 +21,10 @@ public record OrderRequest(
         @Min(value = 0, message = "Delivery fee cannot be negative")
         BigDecimal deliveryFee,
         @NotBlank(message = "Payment from is required")
-        String paymentFrom
+        String paymentFrom,
+        /*
+         * Самовывоз или доставка — выбирает покупатель. Если не передано (старые клиенты),
+         * заказ считается доставкой, когда указан адрес и заведение доставляет.
+         */
+        FulfillmentType fulfillment
 ) { }

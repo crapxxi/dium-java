@@ -77,11 +77,14 @@ public class VenueServiceImpl implements VenueService {
     public VenueResponse updateVenue(VenueRequest request, MultipartFile image) throws IOException {
         Venue venue = currentVenueProvider.getCurrentVenue();
 
-        MoneyValidator.requireNonNegative(request.deliveryPrice(), NEGATIVE_DELIVERY_PRICE);
+        MoneyValidator.requireNonNegativeIfPresent(request.deliveryPrice(), NEGATIVE_DELIVERY_PRICE);
 
         venueMapper.updateVenueFromRequest(request, venue);
         venue.setImageUrl(fileService.replaceFile(venue.getImageUrl(), image));
-        venue.setDeliveryPrice(request.deliveryPrice());
+        // Покупатель платит единую цену доставки (delivery.fee); старое поле заведения больше не обязательно
+        if (request.deliveryPrice() != null) {
+            venue.setDeliveryPrice(request.deliveryPrice());
+        }
 
         return venueMapper.toResponse(venueRepository.save(venue));
     }
