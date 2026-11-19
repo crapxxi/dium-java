@@ -183,14 +183,14 @@ class OrderFlowIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void deliveryWorksFromAnyVenue() throws Exception {
-        // Флаг заведения не важен: доставить может любой студент из любого заведения
+    void deliveryIsRejectedWhenVenueDoesNotDeliver() throws Exception {
         authenticate(owner);
         venueService.updateVenue(new VenueRequest("Cafe", null, "Main st. 1", null, false, BigDecimal.ZERO), null);
 
-        OrderResponse order = createOrderAsClient("Dorm 5", FulfillmentType.DELIVERY);
-        assertThat(order.address()).isEqualTo("Dorm 5");
-        assertThat(order.deliveryFee()).isEqualByComparingTo("100");
+        assertThatThrownBy(() -> createOrderAsClient("Dorm 5", FulfillmentType.DELIVERY))
+                .isInstanceOf(BusinessLogicException.class)
+                .hasMessageContaining("самовывоз");
+        assertThat(createOrderAsClient(null, FulfillmentType.PICKUP).status()).isEqualTo(OrderStatus.PENDING);
     }
 
     @Test
