@@ -1,6 +1,7 @@
 package com.dium.demo.dto.responses;
 
 import com.dium.demo.enums.OrderStatus;
+import com.dium.demo.enums.PaymentMethod;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -18,5 +19,8 @@ public record OrderResponse(
         String comment,
         BigDecimal deliveryFee,
         String paymentFrom,
-        String venueOwnerPhone
+        String venueOwnerPhone,
+        PaymentMethod paymentMethod,
+        /* Сколько баллов списано; null — заказ оплачен по Kaspi */
+        Long pointsSpent
 ){ }

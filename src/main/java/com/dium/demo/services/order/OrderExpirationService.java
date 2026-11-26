@@ -18,6 +18,8 @@ import java.util.List;
 public class OrderExpirationService {
 
     private final OrderRepository orderRepository;
+    /** Те же реакции, что и при отмене заведением: например, возврат баллов за заказ. */
+    private final List<OrderStatusListener> statusListeners;
 
     @Scheduled(fixedRate = 60000)
     @Transactional
@@ -32,12 +34,17 @@ public class OrderExpirationService {
         if (!expiredOrders.isEmpty()) {
             log.info("Found {} expired orders for cancel", expiredOrders.size());
 
-            expiredOrders.forEach(order -> {
-                order.setStatus(OrderStatus.CANCELLED);
-                order.setComment("[Auto-expiration: didn't confirmed in 5 minutes]");
-            });
+            expiredOrders.forEach(this::expire);
 
             orderRepository.saveAll(expiredOrders);
         }
+    }
+
+    private void expire(Order order) {
+        OrderStatus previous = order.getStatus();
+        statusListeners.forEach(listener -> listener.beforeStatusChange(order, OrderStatus.CANCELLED));
+        order.setStatus(OrderStatus.CANCELLED);
+        order.setComment("[Auto-expiration: didn't confirmed in 5 minutes]");
+        statusListeners.forEach(listener -> listener.afterStatusChange(order, previous));
     }
 }

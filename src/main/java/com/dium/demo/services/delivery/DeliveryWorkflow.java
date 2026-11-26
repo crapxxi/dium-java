@@ -8,6 +8,7 @@ import com.dium.demo.models.Delivery;
 import com.dium.demo.models.Order;
 import com.dium.demo.models.User;
 import com.dium.demo.repositories.DeliveryRepository;
+import com.dium.demo.services.wallet.WalletOperations;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -26,6 +27,7 @@ public class DeliveryWorkflow {
     private final DeliveryCodes codes;
     private final DeliveryNotifier notifier;
     private final DeliveryProperties properties;
+    private final WalletOperations walletOperations;
     private final Clock clock;
 
     /** Заведение приняло заказ с адресом — заказ появляется в ленте курьеров. Повторный вызов ничего не создаёт. */
@@ -73,6 +75,8 @@ public class DeliveryWorkflow {
         moveTo(delivery, DeliveryStatus.DELIVERED);
         delivery.setDeliveredAt(now());
         delivery.getOrder().setStatus(OrderStatus.COMPLETED);
+        // Баллы курьеру — только сейчас, когда передача подтверждена
+        walletOperations.payCourier(delivery);
         notifier.delivered(delivery);
     }
 
@@ -91,8 +95,10 @@ public class DeliveryWorkflow {
         deliver(delivery);
     }
 
+    /** Доставка отменена, заказ остаётся: если он оплачен баллами, баллы за доставку возвращаются клиенту. */
     public void cancel(Delivery delivery, String reason) {
         cancelWithOrder(delivery);
+        walletOperations.refundDelivery(delivery);
         notifier.cancelled(delivery, reason);
     }
 
