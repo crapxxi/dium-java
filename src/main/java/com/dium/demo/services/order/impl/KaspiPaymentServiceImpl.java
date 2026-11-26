@@ -1,5 +1,8 @@
 package com.dium.demo.services.order.impl;
 
+import com.dium.demo.enums.PaymentMethod;
+import com.dium.demo.exceptions.BusinessLogicException;
+import com.dium.demo.models.Order;
 import com.dium.demo.models.Venue;
 import com.dium.demo.repositories.OrderRepository;
 import com.dium.demo.services.order.PaymentService;
@@ -22,7 +25,11 @@ public class KaspiPaymentServiceImpl implements PaymentService {
     @Transactional(readOnly = true)
     @Override
     public String getPaymentUrl(Long orderId) {
-        Venue venue = orderRepository.findByIdOrThrow(orderId).getVenue();
+        Order order = orderRepository.findByIdOrThrow(orderId);
+        if (order.getPaymentMethod() == PaymentMethod.POINTS) {
+            throw new BusinessLogicException("Заказ уже оплачен баллами — переводить ничего не нужно");
+        }
+        Venue venue = order.getVenue();
 
         if (venue.getKaspiUrl() == null || venue.getKaspiUrl().isBlank()) {
             throw new EntityNotFoundException("Заведение еще не добавило ссылку Kaspi");

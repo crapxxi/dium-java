@@ -6,6 +6,7 @@ import com.dium.demo.dto.requests.OrderRequest;
 import com.dium.demo.dto.responses.OrderResponse;
 import com.dium.demo.enums.FulfillmentType;
 import com.dium.demo.enums.OrderStatus;
+import com.dium.demo.enums.PaymentMethod;
 import com.dium.demo.enums.UserRole;
 import com.dium.demo.exceptions.BusinessLogicException;
 import com.dium.demo.mappers.OrderMapper;
@@ -23,6 +24,8 @@ import com.dium.demo.services.order.OrderItemFactory;
 import com.dium.demo.services.order.OrderNotificationService;
 import com.dium.demo.services.order.OrderService;
 import com.dium.demo.services.order.OrderStatusListener;
+import com.dium.demo.services.wallet.PointsPricing;
+import com.dium.demo.services.wallet.WalletOperations;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +46,8 @@ public class OrderServiceImpl implements OrderService {
     /** Другие модули (например, доставка), которым важна смена статуса заказа. */
     private final List<OrderStatusListener> statusListeners;
     private final DeliveryProperties deliveryProperties;
+    private final PointsPricing pointsPricing;
+    private final WalletOperations walletOperations;
 
     @Transactional
     @Override
@@ -58,6 +63,9 @@ public class OrderServiceImpl implements OrderService {
         // Доставка стоит одинаково за весь заказ, сколько бы в нём ни было товаров
         BigDecimal deliveryFee = delivery ? deliveryProperties.fee() : BigDecimal.ZERO;
 
+        PaymentMethod paymentMethod = request.paymentMethod() != null ? request.paymentMethod() : PaymentMethod.KASPI;
+        boolean paidWithPoints = paymentMethod == PaymentMethod.POINTS;
+
         Order order = Order.builder()
                 .user(user)
                 .venue(venue)
@@ -65,7 +73,8 @@ public class OrderServiceImpl implements OrderService {
                 .comment(request.comment())
                 .address(delivery ? request.address() : null)
                 .deliveryFee(deliveryFee)
-                .paymentFrom(resolvePaymentFrom(request, user))
+                .paymentMethod(paymentMethod)
+                .paymentFrom(paidWithPoints ? null : resolvePaymentFrom(request, user))
                 .build();
 
         List<OrderItem> items = new ArrayList<>();
@@ -75,8 +84,19 @@ public class OrderServiceImpl implements OrderService {
         order.setItems(items);
         order.setTotalSum(totalSum(items, deliveryFee));
 
+        if (paidWithPoints) {
+            // Цена в баллах считается на сервере по ценам из БД: клиент не может прислать свою
+            long pointsDelivery = pointsPricing.priceInPoints(deliveryFee);
+            order.setPointsDelivery(pointsDelivery);
+            order.setPointsSpent(pointsPricing.priceInPoints(order.getTotalSum().subtract(deliveryFee)) + pointsDelivery);
+        }
+
         Order savedOrder = orderRepository.save(order);
         savedOrder.setPickupCode(generatePickupCode(savedOrder.getId()));
+        if (paidWithPoints) {
+            // В той же транзакции: не хватит баллов — заказ не создастся
+            walletOperations.payOrder(savedOrder);
+        }
 
         return orderMapper.toResponse(savedOrder);
     }

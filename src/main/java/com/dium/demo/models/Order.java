@@ -1,6 +1,7 @@
 package com.dium.demo.models;
 
 import com.dium.demo.enums.OrderStatus;
+import com.dium.demo.enums.PaymentMethod;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -43,10 +44,21 @@ public class Order {
     private Integer pickupCode;
     private String paymentFrom;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private PaymentMethod paymentMethod;
+    /** Сколько баллов списано за заказ (с наценкой); только для оплаты баллами. */
+    private Long pointsSpent;
+    /** Часть {@link #pointsSpent} за доставку: вернётся, если доставку отменят. */
+    private Long pointsDelivery;
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.status = OrderStatus.PENDING;
+        if (this.paymentMethod == null) {
+            this.paymentMethod = PaymentMethod.KASPI;
+        }
     }
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL,orphanRemoval = true)

@@ -79,3 +79,20 @@ FROM modifier_groups mg
     AS m(product_name, group_name, modifier_name, price_delta)
               ON m.product_name = pr.name AND m.group_name = mg.name
 WHERE NOT EXISTS (SELECT 1 FROM modifiers x WHERE x.modifier_group_id = mg.id AND x.name = m.modifier_name);
+
+-- Баллы ---------------------------------------------------------------
+-- Студенту 77000000002 — 3000 баллов, чтобы проверить оплату баллами.
+-- Как и любая правка баланса, через журнал: запись и баланс появляются один раз.
+WITH credited AS (
+    INSERT INTO wallet_transactions (user_id, amount, balance_after, type, idempotency_key, note, created_by_id)
+        SELECT c.id, 3000, 3000, 'ADMIN_ADJUSTMENT', 'dev-seed:client-points', 'Стартовые баллы для разработки', a.id
+        FROM users c
+                 JOIN users a ON a.phone = '77000000000'
+        WHERE c.phone = '77000000002'
+          AND NOT EXISTS (SELECT 1 FROM wallets w WHERE w.user_id = c.id)
+        ON CONFLICT (idempotency_key) DO NOTHING
+        RETURNING user_id, amount)
+INSERT INTO wallets (user_id, balance)
+SELECT user_id, amount
+FROM credited
+ON CONFLICT (user_id) DO NOTHING;
