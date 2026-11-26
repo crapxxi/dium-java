@@ -66,7 +66,8 @@ public class DeliveryViews {
                 HandoverCode.DELIVERY.isLocked(delivery, maxAttempts()),
                 delivery.getAssignedAt(),
                 delivery.getPickedUpAt(),
-                delivery.getDeliveredAt());
+                delivery.getDeliveredAt(),
+                delivery.getDeadlineAt());
     }
 
     public DeliveryResponses.Customer forCustomer(Delivery delivery) {
@@ -83,7 +84,8 @@ public class DeliveryViews {
                 delivery.getCreatedAt(),
                 delivery.getAssignedAt(),
                 delivery.getPickedUpAt(),
-                delivery.getDeliveredAt());
+                delivery.getDeliveredAt(),
+                delivery.getDeadlineAt());
     }
 
     public DeliveryResponses.Venue forVenue(Delivery delivery) {
@@ -131,7 +133,8 @@ public class DeliveryViews {
                 delivery.getAssignedAt(),
                 delivery.getPickedUpAt(),
                 delivery.getDeliveredAt(),
-                delivery.getCancelledAt());
+                delivery.getCancelledAt(),
+                delivery.getDeadlineAt());
     }
 
     public DeliveryResponses.Issue issue(DeliveryIssue issue) {

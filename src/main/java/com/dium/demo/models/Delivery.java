@@ -89,6 +89,12 @@ public class Delivery {
     private Instant deliveredAt;
     private Instant cancelledAt;
 
+    /**
+     * Срок текущего этапа: найти курьера, забрать готовый заказ или отдать его клиенту.
+     * Пусто — срока нет (доставка завершена, заказ ещё готовится или о просрочке уже сообщено).
+     */
+    private Instant deadlineAt;
+
     /** Оптимистическая блокировка: из двух одновременных изменений одно получит 409. */
     @Version
     private Long version;

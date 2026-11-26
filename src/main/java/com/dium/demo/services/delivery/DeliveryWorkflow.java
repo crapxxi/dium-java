@@ -39,6 +39,7 @@ public class DeliveryWorkflow {
                         .courierFee(properties.fee())
                         .deliveryCode(codes.newSealedCode())
                         .createdAt(now())
+                        .deadlineAt(now().plus(properties.timeouts().searching()))
                         .build()));
     }
 
@@ -49,7 +50,16 @@ public class DeliveryWorkflow {
         delivery.setPickupCode(codes.newSealedCode());
         delivery.setPickupCodeAttempts(0);
         delivery.setAssignedAt(now());
+        // Срок «забрать» идёт, только когда заказ готов: пока заведение готовит, курьер не виноват
+        delivery.setDeadlineAt(isOrderReady(delivery) ? now().plus(properties.timeouts().pickup()) : null);
         notifier.courierAssigned(delivery);
+    }
+
+    /** Заведение отметило заказ готовым: у назначенного курьера начинается срок, чтобы его забрать. */
+    public void orderReady(Delivery delivery) {
+        if (delivery.getStatus() == DeliveryStatus.ASSIGNED) {
+            delivery.setDeadlineAt(now().plus(properties.timeouts().pickup()));
+        }
     }
 
     /** Курьер отказался или его снял администратор: заказ снова в ленте, старый код курьера недействителен. */
@@ -59,6 +69,7 @@ public class DeliveryWorkflow {
         delivery.setPickupCode(null);
         delivery.setPickupCodeAttempts(0);
         delivery.setAssignedAt(null);
+        delivery.setDeadlineAt(now().plus(properties.timeouts().searching()));
     }
 
     /** Заведение отдало заказ курьеру. */
@@ -66,6 +77,7 @@ public class DeliveryWorkflow {
         requireOrderReady(delivery);
         moveTo(delivery, DeliveryStatus.PICKED_UP);
         delivery.setPickedUpAt(now());
+        delivery.setDeadlineAt(now().plus(properties.timeouts().delivering()));
         notifier.pickedUp(delivery);
     }
 
@@ -74,6 +86,7 @@ public class DeliveryWorkflow {
         requireOrderReady(delivery);
         moveTo(delivery, DeliveryStatus.DELIVERED);
         delivery.setDeliveredAt(now());
+        delivery.setDeadlineAt(null);
         delivery.getOrder().setStatus(OrderStatus.COMPLETED);
         // Баллы курьеру — только сейчас, когда передача подтверждена
         walletOperations.payCourier(delivery);
@@ -106,6 +119,7 @@ public class DeliveryWorkflow {
     public void cancelWithOrder(Delivery delivery) {
         moveTo(delivery, DeliveryStatus.CANCELLED);
         delivery.setCancelledAt(now());
+        delivery.setDeadlineAt(null);
     }
 
     private void moveTo(Delivery delivery, DeliveryStatus next) {
@@ -114,6 +128,10 @@ public class DeliveryWorkflow {
                     "Доставку в статусе " + delivery.getStatus() + " нельзя перевести в " + next);
         }
         delivery.setStatus(next);
+    }
+
+    private static boolean isOrderReady(Delivery delivery) {
+        return delivery.getOrder().getStatus() == OrderStatus.READY;
     }
 
     private static void requireOrderReady(Delivery delivery) {
