@@ -53,7 +53,9 @@ public final class DeliveryResponses {
             boolean deliveryCodeLocked,
             Instant assignedAt,
             Instant pickedUpAt,
-            Instant deliveredAt
+            Instant deliveredAt,
+            /* Срок текущего этапа: найти курьера, забрать заказ или отдать клиенту; null — срока нет */
+            Instant deadlineAt
     ) {
     }
 
@@ -80,7 +82,9 @@ public final class DeliveryResponses {
             Instant createdAt,
             Instant assignedAt,
             Instant pickedUpAt,
-            Instant deliveredAt
+            Instant deliveredAt,
+            /* Срок текущего этапа: найти курьера, забрать заказ или отдать клиенту; null — срока нет */
+            Instant deadlineAt
     ) {
     }
 
@@ -126,7 +130,9 @@ public final class DeliveryResponses {
             Instant assignedAt,
             Instant pickedUpAt,
             Instant deliveredAt,
-            Instant cancelledAt
+            Instant cancelledAt,
+            /* Срок текущего этапа: найти курьера, забрать заказ или отдать клиенту; null — срока нет */
+            Instant deadlineAt
     ) {
     }
 

@@ -37,6 +37,8 @@ public class DeliveryOrderStatusListener implements OrderStatusListener {
     public void afterStatusChange(Order order, OrderStatus previous) {
         if (order.getStatus() == OrderStatus.PREPARING && hasText(order.getAddress())) {
             workflow.open(order);
+        } else if (order.getStatus() == OrderStatus.READY) {
+            deliveryRepository.findByOrderId(order.getId()).ifPresent(workflow::orderReady);
         } else if (order.getStatus() == OrderStatus.CANCELLED) {
             deliveryRepository.findByOrderId(order.getId())
                     .filter(delivery -> delivery.getStatus().isActive())

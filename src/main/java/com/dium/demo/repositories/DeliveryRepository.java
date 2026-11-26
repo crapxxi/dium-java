@@ -54,6 +54,13 @@ public interface DeliveryRepository extends BaseRepository<Delivery, Long>, Owne
             order by d.createdAt desc limit 100""")
     List<Delivery> findRecent(@Param("status") DeliveryStatus status);
 
+    /** Незавершённые доставки, у которых истёк срок текущего этапа, — самые просроченные первыми. */
+    @Query("""
+            select d.id from Delivery d
+            where d.status in :statuses and d.deadlineAt is not null and d.deadlineAt <= :now
+            order by d.deadlineAt asc""")
+    List<Long> findOverdueIds(@Param("statuses") Collection<DeliveryStatus> statuses, @Param("now") java.time.Instant now);
+
     @Override
     @Query("select d.order.venue.owner.id from Delivery d where d.id = :id")
     Optional<Long> findOwnerIdById(@Param("id") Long id);

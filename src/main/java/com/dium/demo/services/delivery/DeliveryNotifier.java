@@ -40,6 +40,11 @@ public class DeliveryNotifier {
         notifyCustomer(delivery, properties.messages().cancelled(), Map.of("reason", reason == null ? "" : reason));
     }
 
+    /** Курьер не пришёл за заказом и снят: заказ снова ищет курьера. */
+    public void courierReleased(Delivery delivery) {
+        notifyCustomer(delivery, properties.messages().courierReleased(), Map.of());
+    }
+
     private void notifyCustomer(Delivery delivery, String template, Map<String, String> extra) {
         if (template == null || template.isBlank()) {
             return;
